@@ -1,97 +1,82 @@
+import { Client, isFullPage } from "@notionhq/client";
+import type { PageObjectResponse } from "@notionhq/client";
 import type { DealListItem } from "./types";
 
-const NOTION_VERSION = "2022-06-28";
 const DEFAULT_DS_ID = "6abacccb-e24b-46c6-9f9f-6a2a3cfc9a0f";
 
 function dsId() {
   return process.env.NOTION_DEALFLOW_DS_ID ?? DEFAULT_DS_ID;
 }
 
-function authHeaders() {
-  const token = process.env.NOTION_TOKEN;
-  if (!token) throw new Error("NOTION_TOKEN is not set");
-  return {
-    Authorization: `Bearer ${token}`,
-    "Notion-Version": NOTION_VERSION,
-    "Content-Type": "application/json",
-  };
+let _client: Client | null = null;
+function getClient(): Client {
+  if (_client) return _client;
+  const auth = process.env.NOTION_TOKEN;
+  if (!auth) throw new Error("NOTION_TOKEN is not set");
+  _client = new Client({ auth, notionVersion: "2025-09-03" });
+  return _client;
 }
 
-type NotionProp = Record<string, unknown>;
+type Prop = PageObjectResponse["properties"][string];
 
-function getText(prop: NotionProp | undefined): string {
+function getText(prop: Prop | undefined): string {
   if (!prop) return "";
-  const t = prop as { type?: string } & Record<string, unknown>;
-  if (t.type === "title" && Array.isArray(t.title)) {
-    return (t.title as Array<{ plain_text: string }>).map((x) => x.plain_text).join("");
-  }
-  if (t.type === "rich_text" && Array.isArray(t.rich_text)) {
-    return (t.rich_text as Array<{ plain_text: string }>).map((x) => x.plain_text).join("");
-  }
-  if (t.type === "url" && typeof t.url === "string") return t.url;
+  if (prop.type === "title") return prop.title.map((x) => x.plain_text).join("");
+  if (prop.type === "rich_text") return prop.rich_text.map((x) => x.plain_text).join("");
+  if (prop.type === "url") return prop.url ?? "";
   return "";
 }
 
-function getSelect(prop: NotionProp | undefined): string {
+function getSelect(prop: Prop | undefined): string {
   if (!prop) return "";
-  const t = prop as { type?: string; select?: { name?: string } | null };
-  if (t.type === "select" && t.select?.name) return t.select.name;
+  if (prop.type === "select") return prop.select?.name ?? "";
   return "";
 }
 
-function getMultiSelect(prop: NotionProp | undefined): string[] {
+function getMultiSelect(prop: Prop | undefined): string[] {
   if (!prop) return [];
-  const t = prop as { type?: string; multi_select?: Array<{ name: string }> };
-  if (t.type === "multi_select" && Array.isArray(t.multi_select)) {
-    return t.multi_select.map((x) => x.name);
-  }
+  if (prop.type === "multi_select") return prop.multi_select.map((x) => x.name);
   return [];
 }
 
-function getNumber(prop: NotionProp | undefined): number | null {
+function getNumber(prop: Prop | undefined): number | null {
   if (!prop) return null;
-  const t = prop as { type?: string; number?: number | null };
-  if (t.type === "number" && typeof t.number === "number") return t.number;
+  if (prop.type === "number") return prop.number;
   return null;
 }
 
+async function resolveDataSourceId(id: string): Promise<string> {
+  const notion = getClient();
+  const db = await notion.databases.retrieve({ database_id: id });
+  const sources = (db as { data_sources?: Array<{ id: string }> }).data_sources;
+  if (!sources?.length) throw new Error(`Notion database ${id} has no data sources`);
+  return sources[0].id;
+}
+
 export async function listDeals(): Promise<DealListItem[]> {
-  const res = await fetch(`https://api.notion.com/v1/data_sources/${dsId()}/query`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({
+  const notion = getClient();
+  const query = (data_source_id: string) =>
+    notion.dataSources.query({
+      data_source_id,
       page_size: 40,
       filter: {
         property: "Status",
         select: { does_not_equal: "❌ Pass" },
       },
       sorts: [{ property: "Last Edited At", direction: "descending" }],
-    }),
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    // fallback for workspaces still on the pages API
-    const legacy = await fetch(`https://api.notion.com/v1/databases/${dsId()}/query`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        page_size: 40,
-        sorts: [{ property: "Last Edited At", direction: "descending" }],
-      }),
-      cache: "no-store",
     });
-    if (!legacy.ok) {
-      const text = await legacy.text();
-      throw new Error(`Notion list failed: ${legacy.status} ${text}`);
-    }
-    const data = (await legacy.json()) as { results: Array<{ id: string; properties: Record<string, NotionProp> }> };
-    return data.results.map(mapListItem);
+
+  try {
+    const res = await query(dsId());
+    return res.results.filter(isFullPage).map(mapListItem);
+  } catch {
+    const fallbackId = await resolveDataSourceId(dsId());
+    const res = await query(fallbackId);
+    return res.results.filter(isFullPage).map(mapListItem);
   }
-  const data = (await res.json()) as { results: Array<{ id: string; properties: Record<string, NotionProp> }> };
-  return data.results.map(mapListItem);
 }
 
-function mapListItem(page: { id: string; properties: Record<string, NotionProp> }): DealListItem {
+function mapListItem(page: PageObjectResponse): DealListItem {
   const p = page.properties;
   return {
     id: page.id,
@@ -107,12 +92,9 @@ function mapListItem(page: { id: string; properties: Record<string, NotionProp> 
 }
 
 export async function fetchDeal(pageId: string): Promise<Record<string, unknown>> {
-  const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-    headers: authHeaders(),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Notion page fetch failed: ${res.status}`);
-  const page = (await res.json()) as { properties: Record<string, NotionProp> };
+  const notion = getClient();
+  const page = await notion.pages.retrieve({ page_id: pageId });
+  if (!isFullPage(page)) throw new Error("Notion returned a partial page object");
   const p = page.properties;
   return {
     Company: getText(p["Company"]),
