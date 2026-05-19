@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "ic-sim", "runs": [{"id": "eval-0-mindgard-ai-security-seed-with_skill", "prompt": "I want to run an IC sim. Deal: Mindgard. AI security \u2014 red-teaming for LLMs and agents. Seed stage, ~8 FTE, UK. Lead competitor is HiddenLayer. Working with 3 FTSE 100 customers in pilot, 1 paid. Play both me (a reasonably-prepared associate giving specific, numerate answers) and the committee. Run 5 full committee turns (so ~10 back-and-forths), then produce the final report. Write the complete transcript and final report as markdown to outputs/session.md.", "eval_id": 0, "outputs": [{"name": "session.md", "type": "text", "content": "# IC Sim \u2014 Mindgard (AI Security / Red-Teaming \u00b7 Seed)\n\n_Session date: 2026-04-12 \u00b7 5 turns \u00b7 ~18:00 elapsed_\n\n---\n\n## A. Deal Brief\n\n```\nMINDGARD \u00b7 AI SECURITY (RED-TEAMING) \u00b7 SEED\nAutomated red-teaming platform for LLMs and AI agents \u2014 continuous\nadversarial testing, jailbreak detection, and runtime guardrail\nvalidation for enterprise AI deployments.\n\nTHESIS FIT \u2014 AI-native security tooling is a durable seam as enterprises\noperationalize LLMs under EU AI Act / NIST AI RMF pressure. UK academic\nspinout (Lancaster University) [estimated provenance] gives technical-moat\nsignal consistent with our deep-tech thesis.\n\nMARKET \u2014 LLM security / red-teaming TAM ~$2-4B by 2028 [estimated,\nextrapolated from Gartner AI TRiSM forecasts]; near-term SAM ~$400M in\nEU+UK regulated enterprise [estimated].\n\nCOMPETITIVE LANDSCAPE \u2014 HiddenLayer (US lead, Series A $50M [public]),\nRobust Intelligence (acq. by Cisco 2024), Protect AI, Lakera, CalypsoAI.\nOpen-source baseline: Garak, Microsoft PyRIT.\n\nTEAM \u2014 Founder/CEO Peter Garraghan (Prof., Lancaster \u2014 distributed\nsystems + ML security research). ~8 FTE [confirmed].\n\nTRACTION \u2014 3 FTSE 100 customers in pilot, 1 paid [confirmed]. ARR\n~\u00a3150-250k [estimated from 1 paid FTSE pilot].\n\nRECENT SIGNAL \u2014 NCSC / UK AISI tailwinds; EU AI Act Art. 15 cybersecurity\nobligations enter force Aug 2026.\n\nTOP RISKS\n- HiddenLayer 5-10x capitalized; can out-hire and out-market.\n- Red-teaming risks being absorbed into MLOps/cloud vendor suites.\n- Open-source Garak / PyRIT commoditize core technique.\n\nSSI: 68/100 [estimated] \u00b7 Regulatory Embeddedness: 14/20 [estimated]\n```\n\nTransparency note: numbers tagged `[estimated]` are inferred by the presenter (a reasonably-prepared associate) rather than given in-deck. Confirmed facts: 8 FTE, UK, 3 FTSE 100 pilots with 1 paid, HiddenLayer as lead competitor, seed stage.\n\n---\n\n## B. Full Transcript\n\n### Round 1 \u2014 Opening\n\n**Moderator:** You've taken your seat. Open with your thesis \u2014 why is this a fund-returner?\n\n**Presenter (Associate):**\nThesis: Mindgard becomes the compliance-grade red-teaming layer every EU+UK regulated enterprise is forced to buy between now and 2027, when AI Act Article 15 cyber obligations bite. Three reasons it's a fund-returner. (1) Founder is a category expert \u2014 Peter Garraghan runs the Lancaster AI security lab, which is rare provenance in a field where most competitors are re-skinned pentest shops. (2) We're catching them pre-GTM scale with 3 FTSE 100 pilots and 1 paid \u2014 that's an estimated \u00a3150-250k ARR off 8 FTE, which is disciplined burn. (3) HiddenLayer is the US category leader but structurally cannot win UK/EU regulated procurement the way a UK-academic-spinout can. Our bet: \u00a31.5M at \u00a312M post for ~11% ownership, with reserves earmarked to double down at Series A if \u00a3ARR clears \u00a31.5M by month 18. Downside: this becomes a Cisco/Microsoft bundled feature. Upside: they're the Wiz of AI security in Europe.\n\n---\n\n### Turn 1 \u2014 ic-skeptic (Pat Herrington)\n\nRouting rationale: opening statement is heavy on TAM, competitor positioning, and moat framing.\n\n> **Pat Herrington \u2014 The Skeptic** \u25cf skeptical\n>\n> Two things jar. \"HiddenLayer structurally cannot win UK/EU procurement\" is a claim, not a moat \u2014 Cisco owns Robust Intelligence and sells into every UK bank already, and HiddenLayer will hire a London GM the week they notice you. And the Lancaster provenance is lovely, but Garak is MIT-licensed and maintained by NVIDIA engineers. Where exactly does the willingness-to-pay come from once a CISO's own AppSec team can run Garak in a CI pipeline for free?\n>\n> `[sentiment: skeptical]`\n\n**Presenter (Associate):**\nFair pressure. Willingness-to-pay sits in three places Garak doesn't touch. First, continuous regression \u2014 Garak is a one-shot CLI; Mindgard runs scheduled attack suites against staging and prod with diff-ing, SLA-backed reporting, and evidence artefacts a Big 4 auditor will accept under AI Act Art. 15. That's the paid FTSE customer's stated reason for buying \u2014 they priced the internal alternative at ~\u00a3400k/yr in headcount. Second, attack library breadth \u2014 Mindgard claims ~200 attack classes versus Garak's ~40, including agent-specific (tool-poisoning, indirect prompt injection across MCP). Third, on Cisco/HiddenLayer UK GTM: I agree a London GM lands in 12 months; the bet is Mindgard signs 8-10 FTSE 100 logos first on the back of NCSC / UK AISI warm intros that a US vendor can't replicate quickly. If they don't hit that by month 18 it's a kill criterion, not a pivot.\n\n---\n\n### Turn 2 \u2014 ic-operator (Rhea Kowalski)\n\nRouting rationale: presenter invoked burn discipline, FTSE customer internal-build cost, attack-library architecture, hiring (London GM) \u2014 operator territory.\n\n> **Rhea Kowalski \u2014 The Operator** \u25cf neutral\n>\n> The \"\u00a3400k internal alternative\" number is exactly the kind of framing CISOs say in discovery and walk back at renewal \u2014 I've lived it. Eight FTE at seed with three live pilots means whoever is running customer success is also shipping product; that breaks by month nine. Who are the next three hires and what's the split between the \u00a31.5M raise across R&D, GTM, and runway?\n>\n> `[sentiment: neutral]`\n\n**Presenter (Associate):**\nAgreed on the renewal-risk framing \u2014 the \u00a3400k is their stated displacement, I'd underwrite 40-50% of that landing as real renewal willingness, so ~\u00a3180-200k per FTSE logo at steady state. On headcount: next three hires are (1) a Forward-Deployed Security Engineer to own the three pilots end-to-end \u2014 their JD is open, \u00a3110k base; (2) a Founding AE with regulated-enterprise experience, someone from a Snyk or Darktrace background, \u00a3120k base + OTE; (3) a second ML security researcher to keep the attack-library lead over Garak \u2014 \u00a3130k. Split of the \u00a31.5M: ~\u00a3950k payroll over 18 months (roughly 11 FTE blended \u00a385k loaded), \u00a3250k cloud + attack infra, \u00a3150k GTM (events, SOC 2 audit, a design partner roadshow), \u00a3150k buffer. That's 18-month runway to a Series A on metrics, not time. Honest gap: we don't yet have a VP Eng, and Peter is still committing 40% of code \u2014 I'd want that off the critical path by month six.\n\n---\n\n### Turn 3 \u2014 ic-hawk (Samuel Oduya)\n\nRouting rationale: presenter leaned on AI Act Art. 15 audit evidence and SOC 2. Hawk has not spoken and this is his turf.\n\n> **Samuel Oduya \u2014 The Regulatory Hawk** \u25cf skeptical\n>\n> You're pinning enterprise willingness-to-pay on AI Act Article 15, but Article 15 applies to providers of high-risk AI systems \u2014 Mindgard's FTSE buyers are deployers, and most of their LLM use-cases fall under limited-risk transparency obligations, not high-risk conformity assessment. SOC 2 is a control framework, not an AI Act artefact. Which specific Annex III use-case categories are your three FTSE pilots actually deploying, and what conformity-assessment path are they walking that makes Mindgard's output a required artefact rather than a nice-to-have?\n>\n> `[sentiment: skeptical]`\n\n**Presenter (Associate):**\nThat's the sharpest question so far and I'll answer it honestly with the gap marked. Of the three FTSE pilots: one is a UK retail bank deploying an LLM copilot for retail-banking customer service \u2014 that touches Annex III point 5(b) creditworthiness-adjacent flows, so plausibly high-risk and conformity-assessment relevant. The second is an insurer doing claims triage \u2014 also Annex III 5(c) risk-assessment for life/health insurance, high-risk. The third is an FMCG company doing internal knowledge-management \u2014 limited-risk at best; that's the weakest regulatory anchor and likely won't renew on compliance grounds alone. So the honest read: ~2 of 3 are in the high-risk perimeter where Art. 15 robustness + cybersecurity becomes a required control, and Mindgard's red-team reports serve as evidence toward the conformity assessment \u2014 but they are not themselves a notified-body-accepted artefact. The bet is that Big 4 and notified bodies adopt red-team reports as de-facto evidence by 2027, similar to how SOC 2 reports became de-facto for enterprise SaaS. If that adoption lags 18-24 months, ARR compresses and this is a 3x, not a 10x. I flag that as the single biggest regulatory-timing risk.\n\n---\n\n### Turn 4 \u2014 ic-portfolio (Mira Chen)\n\nRouting rationale: four members should speak; Mira is the only one who hasn't. Also the presenter introduced check size and reserve strategy in the opening, which is her remit.\n\n> **Mira Chen \u2014 The Portfolio Lens** \u25cf neutral\n>\n> We already own a position in Lakera at seed extension, which puts us on the cap table of a direct competitor in the same red-teaming wedge \u2014 that's a conflict, not just an overlap, and it will surface the first time either board discusses M&A or a strategic round. Either we pass on Mindgard, or we have a conversation with Lakera's board before we sign. What's your proposed conflict protocol, and are you pricing in the reputational cost if Lakera reads this as our hedge?\n>\n> `[sentiment: skeptical]`\n\n**Presenter (Associate):**\nI didn't know we were in Lakera \u2014 that's a material gap in my prep and I own it. Two paths I'd put to the partnership. Path A, cleaner: we pass on Mindgard as a lead, but offer to be a \u00a3250k participant in a syndicate led by Seedcamp or LocalGlobe, with explicit disclosure to Lakera's board and an information wall on our side \u2014 no board seat, no pro-rata rights beyond this round. Lakera is Swiss, EU-focused on guardrails more than red-teaming; the overlap is real but not head-on, and the write-up frames Mindgard as UK-regulated-enterprise specialist, which is a wedge Lakera has explicitly deprioritized in their last board deck [I'd need to confirm]. Path B: hard pass, and we introduce Mindgard to two or three co-investors to preserve the relationship for a later round. My recommendation is Path A contingent on Lakera's CEO giving verbal no-objection; if that's not obtainable in 10 days, we default to Path B. I should not have brought this to IC without flagging the overlap; that's on me.\n\n---\n\n### Turn 5 \u2014 ic-skeptic (Pat Herrington)\n\nRouting rationale: presenter conceded a material prep gap and shifted the deal shape (lead \u2192 participant). The Skeptic opened the session and should close the loop on whether the thesis still holds under the new construction.\n\n> **Pat Herrington \u2014 The Skeptic** \u25cf neutral\n>\n> Credit for owning the Lakera miss cleanly \u2014 most presenters fold or bluster there, you did neither. But a \u00a3250k participation check doesn't return this fund even at a 20x \u2014 the ownership math requires leading, and you just argued we can't lead. So what's the actual IC ask now: are you pitching a \u00a3250k relationship check we book as a tracker, or are you still pitching this as a conviction position, and if the latter, how do you square that with the conflict you just described?\n>\n> `[sentiment: neutral]`\n\n**Presenter (Associate):**\nHonest reframe: the IC ask is a \u00a3250k tracker participation, not a conviction lead, and I should have landed there in the opening rather than arriving via Mira's challenge. Rationale for still doing it at \u00a3250k: (a) optionality \u2014 at seed pricing, a \u00a3250k check buys us a front-row view into whether the UK-regulated-enterprise wedge is real, and if it is, we have right-of-first-look at the Series A where we can lead with a \u00a34-6M check at \u00a340-60M post, which is where the fund-return math actually lives; (b) ecosystem \u2014 backing Peter Garraghan wins us credibility with the UK AI-security research community, which is a sourcing moat for the next five AI-security deals; (c) Lakera conflict is manageable at \u00a3250k non-board with disclosure, unmanageable at lead. If the room isn't comfortable with a tracker, my fallback is a warm intro to Seedcamp and we revisit at Series A with no capital committed now. I'd still rank this in the top quartile of seed opportunities I've seen this quarter, but I'm no longer asking for a lead mandate today.\n\n---\n\n## C. Sentiment Dashboard\n\n| Member | T1 | T2 | T3 | T4 | T5 |\n|---|---|---|---|---|---|\n| Skeptic (Pat) | skeptical | \u2014 | \u2014 | \u2014 | neutral |\n| Operator (Rhea) | \u2014 | neutral | \u2014 | \u2014 | \u2014 |\n| Hawk (Samuel) | \u2014 | \u2014 | skeptical | \u2014 | \u2014 |\n| Portfolio (Mira) | \u2014 | \u2014 | \u2014 | skeptical | \u2014 |\n\n---\n\n## D. Post-Committee Report\n\n```\nIC \u00b7 SIM \u2014 POST-COMMITTEE REPORT\nMINDGARD  \u00b7  AI SECURITY / RED-TEAMING \u00b7 SEED  \u00b7  5 turns  \u00b7  ~18:00 elapsed\n\nWEIGHTED SCORE:  7.4 / 10.0\n\n01 CONVICTION CLARITY      7 /10   Held the thesis, but re-shaped the ask mid-room; should have landed on tracker at open.\n02 RISK ACKNOWLEDGMENT     9 /10   Named kill criteria, flagged Lakera miss unprompted, marked regulatory-timing downside.\n03 DATA DENSITY            8 /10   Specific hires, \u00a3 splits, Annex III refs, \u00a3400k displacement \u2014 concrete, mostly plausible.\n04 THESIS ALIGNMENT        6 /10   Fund-return math stops working once deal resizes to \u00a3250k tracker; alignment is softer than claimed.\n05 POISE UNDER PRESSURE    8 /10   Owned the Lakera gap cleanly; did not bluster under Hawk's Annex III challenge.\n\nSUMMARY\nStrong technical and regulatory fluency, genuinely honest about gaps \u2014 this is the\nassociate you want defending a borderline deal. But the IC ask changed shape\nunder live fire, and a tracker check at seed is not what this committee is\nconvened to approve; come back with the real ask pre-wired.\n\nIMPROVEMENT NOTES (next time)\n1. Run the portfolio-conflict check before the brief leaves your desk \u2014 Lakera\n   should have been the first slide, not a surprise in Turn 4.\n2. State the IC ask (lead / co-lead / tracker / pass-with-relationship) in\n   sentence one of the opening; don't let the committee back you into it.\n3. When citing regulation (AI Act Art. 15), name the Annex III use-case class\n   per customer in the brief itself \u2014 Samuel's challenge was foreseeable.\n\nSENTIMENT TRAJECTORY\nSkeptic:    skeptical \u2192 \u2014 \u2192 \u2014 \u2192 \u2014 \u2192 neutral\nOperator:   \u2014 \u2192 neutral \u2192 \u2014 \u2192 \u2014 \u2192 \u2014\nHawk:       \u2014 \u2192 \u2014 \u2192 skeptical \u2192 \u2014 \u2192 \u2014\nPortfolio:  \u2014 \u2192 \u2014 \u2192 \u2014 \u2192 skeptical \u2192 \u2014\n\nNet arc: opened skeptical, softened to neutral by session close \u2014\npresenter earned credibility through candor, lost ownership mandate\nthrough a prep gap.\n```\n"}], "grading": null}, {"id": "eval-0-mindgard-ai-security-seed-without_skill", "prompt": "I want to run an IC sim. Deal: Mindgard. AI security \u2014 red-teaming for LLMs and agents. Seed stage, ~8 FTE, UK. Lead competitor is HiddenLayer. Working with 3 FTSE 100 customers in pilot, 1 paid. Play both me (a reasonably-prepared associate giving specific, numerate answers) and the committee. Run 5 full committee turns (so ~10 back-and-forths), then produce the final report. Write the complete transcript and final report as markdown to outputs/session.md.", "eval_id": 0, "outputs": [{"name": "session.md", "type": "text", "content": "# IC Simulation \u2014 Mindgard (Seed, AI Security)\n\n_Date: 2026-04-12_\n_Format: Mock Investment Committee, 5 turns, 4 members + presenting associate_\n\n---\n\n## 1. Deal Brief\n\n**Company:** Mindgard\n**Sector:** AI Security \u2014 automated red-teaming for LLMs, multimodal models, and agentic systems\n**Stage:** Seed\n**Geography:** United Kingdom (spin-out of Lancaster University)\n**Team size:** ~8 FTE\n**Round context (assumed):** ~$5\u20137M seed at ~$25\u201330M post, with existing pre-seed from UK deep-tech investors (e.g., Lakestar/IQ Capital-style syndicate). We would lead or co-lead with ~$3M for ~10\u201312%.\n**Primary competitor:** HiddenLayer (US, Series B, ~$50M raised, broader AI-SPM positioning)\n**Other competitors:** Robust Intelligence (acquired by Cisco 2024), Protect AI, Lakera, CalypsoAI, open-source Garak, Giskard.\n**Commercial traction:**\n- 3 FTSE 100 customers in paid/unpaid pilot (1 paid, 2 POCs)\n- Paid pilot ARR-equivalent ~\u00a360k (one 12-month contract, financial services)\n- 2 unpaid pilots with 60-day conversion windows in Q2/Q3 2026\n**Product:** Continuous automated red-team harness \u2014 attack library (~300 techniques mapped to MITRE ATLAS + OWASP LLM Top 10), CI/CD integration for model releases, runtime monitoring for deployed agents. SaaS + on-prem option.\n**Thesis summary:** AI adoption in regulated enterprises is outpacing the controls around it. The EU AI Act high-risk provisions begin applying in stages through 2026\u201327, and NIST AI RMF / UK AISI guidance is hardening into procurement requirements. Mindgard sits at a defensible wedge: deep academic provenance in adversarial ML, UK-based (advantage in UK/EU regulated verticals), and an attack-library moat that scales with published research.\n\n---\n\n## 2. Transcript \u2014 5 Committee Turns\n\n### Turn 1 \u2014 Skeptic (Market Size & Competition)\n\n**Skeptic:** \"HiddenLayer has ~$50M in the bank and brand share in US banks. Robust Intelligence is now Cisco. Protect AI raised $60M Series B. What is the *specific* market Mindgard wins in, quantified, that these incumbents cannot trivially enter? And don't tell me 'the UK' \u2014 give me numbers.\"\n\n**Presenter:** \"Fair challenge. I'll be concrete. The addressable wedge for Mindgard in the next 36 months is **regulated EU/UK enterprises deploying generative AI into customer-facing or decisioning workflows** \u2014 specifically financial services, insurance, healthcare, and public sector. Sizing that: there are ~1,800 UK/EU enterprises above \u20ac500M revenue with active GenAI production workloads per IDC Q4 2025 data (up from 400 in 2024). Assume average AI-security spend of \u00a380\u2013120k/year at steady state (triangulated from Gartner's 2025 AI-TRiSM forecast and what Mindgard is charging today \u2014 \u00a360k for one business unit, \u00a3200\u2013300k enterprise-wide). That's a **\u00a3150\u2013220M SAM in UK/EU by 2028**, growing 60%+ YoY.\n\nWhy Mindgard wins a meaningful share rather than zero: (1) **data residency** \u2014 HiddenLayer and Protect AI are US-headquartered and most of their infra is US-hosted; EU regulated buyers increasingly require EEA-only processing, and Mindgard runs on-prem plus UK/Dublin. Two of the three FTSE 100 pilots cited this as the *reason they shortlisted*. (2) **Attack library depth on agents, not just LLMs** \u2014 HiddenLayer's public positioning is heavy on model-scanning (ML-BOM, supply chain). Mindgard's differentiator is runtime red-teaming of *agents with tools*, which is where 2026 enterprise pain is concentrated. (3) **Channel** \u2014 they have a standing MOU with UK AI Safety Institute for benchmark contribution; that's a procurement signal US vendors cannot replicate in 12 months.\n\nI don't think Mindgard becomes the global leader. I think they become the **default EU/UK regulated-sector vendor**, which at 10\u201315% share of that SAM in 2029 is \u00a320\u201330M ARR \u2014 a fund-returner at our entry price if they're acquired or mark up at Series B.\"\n\n---\n\n### Turn 2 \u2014 Operator (Unit Economics & Execution)\n\n**Operator:** \"One paid customer at \u00a360k. Eight people. Walk me through burn, runway at close, and your honest view on the CAC/LTV trajectory. And what's the sales cycle reality \u2014 not the pitch deck reality?\"\n\n**Presenter:** \"Current burn is ~\u00a3180k/month \u2014 8 FTE loaded (6 engineers, 1 founder-led sales, 1 ops), plus AWS/compute ~\u00a315k/mo and a fractional CFO. With the \u00a35M raise net of fees, cash-in is ~\u00a34.7M; plan is to grow to 18 FTE over 18 months, taking burn to ~\u00a3320k/month by month 12. That gives **~18\u201320 months runway** to a Series A target of \u00a310M ARR at Q3 2027.\n\nSales cycle honest view: the FTSE 100 paid deal took **8 months from first meeting to PO** \u2014 two security reviews, a procurement round, and a pen-test of Mindgard itself. That is the realistic enterprise cycle. The two unpaid pilots are on month 4 and month 2 respectively; I modeled 50% conversion to paid at \u00a380k ACV average, which is conservative versus the 67% pilot-to-paid rate HiddenLayer disclosed at RSA 2025.\n\nCAC today is ugly because sales is founder-led \u2014 effectively \u00a340\u201350k fully loaded per won logo, but the founders are doing it, so cash CAC is near zero. Once they hire 2 AEs + 1 SE in month 6, blended CAC goes to ~\u00a390\u2013110k per logo on ~\u00a3100k ACV. That's a **~1.0x CAC payback year-one on ACV, ~0.45x on gross profit** (assume 75% GM on SaaS, lower on on-prem). Not great, typical for regulated-enterprise seed. LTV at 5-year retention with 110% NRR (assumption, anchored to Snyk/Wiz comps) is ~\u00a3550k \u2192 **LTV/CAC ~5x by year 3**, which is the bar I'd want before Series A.\n\nBiggest execution risk I'd flag: the founding team is research-heavy (3 of 5 founders are PhDs). They don't have an enterprise sales leader today. That's hire #1 post-close, and I'd want it written into the plan. I'd also want a CRO search firm retained by month 3.\"\n\n---\n\n### Turn 3 \u2014 Regulatory Hawk (Compliance & Regulatory Tailwinds)\n\n**Regulatory Hawk:** \"You're leaning on the EU AI Act and NIST as tailwinds. Be specific: which *provisions*, in force *when*, create a procurement-forcing event that Mindgard sells into? And what happens to the thesis if the US federal AI executive order posture softens further or if the AI Act enforcement slips \u2014 which, historically, EU tech regulation does.\"\n\n**Presenter:** \"Three concrete forcing functions, in order of certainty:\n\n**(1) EU AI Act Article 15 (accuracy, robustness, cybersecurity) for high-risk systems** \u2014 obligations apply from **2 August 2026** for high-risk AI systems, which explicitly includes credit scoring, insurance risk assessment, employment screening, and critical infrastructure. Article 15(5) requires 'appropriate measures against adversarial attacks.' That is, literally, the Mindgard product category. National competent authorities have to be designated by August 2025 (already happening \u2014 UK is out of scope but tracking closely; France's CNIL and Germany's BNetzA are moving). Penalty exposure is up to 3% of global turnover.\n\n**(2) DORA (Digital Operational Resilience Act) threat-led penetration testing** \u2014 already in force since **17 January 2025** for EU financial entities. TLPT requirements under DORA + ECB TIBER-EU framework are being interpreted by several national regulators to include AI/ML systems where they are critical. Two of the three FTSE 100 pilots are DORA-scoped subsidiaries; this is the immediate wedge.\n\n**(3) UK AI Safety Institute procurement guidance** \u2014 less binding but directionally clear. The UK government's AI procurement playbook (updated Dec 2025) now requires vendors of AI systems to public sector to provide red-team evidence. Mindgard is on the AISI supplier panel as of Q1 2026.\n\nOn the downside scenario you named: you're right to worry. If the AI Act enforcement slips 12 months (plausible \u2014 the Code of Practice for GPAI was already delayed), the 2026 revenue plan takes a **~25\u201330% haircut** because some pilots slow-walk procurement. That's survivable on the 20-month runway but compresses Series A timing to Q1 2028. If the US softens further \u2014 honestly, I think that *helps* Mindgard's EU positioning by sharpening the regulatory divergence; US-only vendors become harder to sell into EU regulated buyers. The real risk isn't regulatory softening, it's **regulatory fragmentation** \u2014 each EU member state implementing differently, forcing Mindgard to build 5 compliance SKUs. I'd want to see their product roadmap for a configurable compliance layer before closing.\"\n\n---\n\n### Turn 4 \u2014 Portfolio Lens (Fund Fit & Reserves)\n\n**Portfolio Lens:** \"We're a \u00a3250M fund, already deployed into two security companies \u2014 one cloud posture, one identity. How does Mindgard *not* cannibalize our existing portfolio relationships, and what's the reserve strategy? Give me a check-size and follow-on plan that doesn't wreck our pacing.\"\n\n**Presenter:** \"Cannibalization first: I've checked with both portfolio companies. The cloud posture co (CSPM) has no AI-security roadmap item before 2027 and their CEO explicitly told me they'd prefer a partner over a build. The identity co is orthogonal \u2014 agentic identity is adjacent but not overlapping with red-teaming. **Neither is a buyer or builder of Mindgard's category in the next 24 months.** There may actually be a GTM partnership opportunity with the CSPM co for joint RFP responses in financial services, which I've warm-introduced.\n\nCheck sizing: recommended initial check **\u00a32.5M at \u00a325M post for ~10%**, co-leading with an existing pre-seed investor who wants to double down. This sits comfortably in our seed bucket \u2014 \u00a32\u20133M initial is our policy band. For reserves, I'd propose **\u00a35M reserved (2x initial)** across Series A and B, which assumes: (a) Series A pro-rata at \u00a310M ARR / \u00a380\u2013100M post ~ \u00a32M to maintain 8\u20139%; (b) Series B selective top-up of \u00a33M if they're on a credible path to \u00a325M ARR. Total committed exposure \u00a37.5M, or **3% of fund** \u2014 within our single-position cap of 5%.\n\nPacing impact: we've done 4 of a target 10 seeds in Fund III, and our sector balance is currently skewed to dev tools. Security is under-indexed; this fills a gap. The deployment pace stays on schedule.\n\nReturn math at the 10% initial / 8% fully-diluted post-reserves: if Mindgard exits at \u00a3500M (a reasonable acquisition scenario \u2014 HiddenLayer's last round implied ~\u00a3400M, and category M&A is active), our \u00a37.5M returns ~\u00a340M gross, **~5.3x MOIC, ~0.16x of fund**. Not a fund-returner alone, but a strong position. The fund-returner case requires them to become the EU category leader and exit at >\u00a31.5B, which I'd put at ~15% probability.\"\n\n---\n\n### Turn 5 \u2014 Skeptic (round 2 \u2014 pressure on the thesis seam)\n\n**Skeptic:** \"You just told the operator LTV/CAC is 5x by year 3 and told the portfolio lens a \u00a3500M exit is a 'reasonable acquisition scenario.' Those two things are in tension \u2014 if unit economics only break positive at year 3, who is acquiring this pre-profitability, and at what multiple, and why now rather than waiting for Mindgard to burn its cash? Convince me this isn't a flat round or worse in 18 months.\"\n\n**Presenter:** \"That's the sharpest question of the session and I'll take it head-on. You're right that the tension is real, so let me separate three scenarios rather than defend a single number:\n\n**Scenario A \u2014 base case (55% probability):** Mindgard hits \u00a33\u20134M ARR at month 18, does a \u00a310\u201315M Series A at ~\u00a360\u201380M post. Not an exit; a markup. Our \u00a32.5M marks to ~\u00a37\u20138M on paper. This is the most likely outcome and it doesn't require an acquisition thesis at all.\n\n**Scenario B \u2014 acquisition case (20% probability):** A strategic \u2014 Cisco (already owns Robust Intelligence but has gaps in EU), CrowdStrike, Palo Alto, or a Big 4 cyber consultancy buying for category entry \u2014 acquires at \u00a3300\u2013600M between 2027 and 2029. These buyers don't buy on LTV/CAC; they buy on **category position, customer logos, and attack-library IP**. Robust Intelligence sold to Cisco at roughly 20x forward ARR with ~\u00a315M ARR \u2014 a comparable outcome for Mindgard implies \u00a3300\u2013400M at \u00a315\u201320M ARR. Why now rather than waiting: because if Mindgard is clearly winning EU regulated-sector logos by 2027, the *option value* of acquiring before a competitor does is what drives strategic premiums.\n\n**Scenario C \u2014 downside (25% probability):** pilots don't convert, a flat or down Series A extension, we mark down 30\u201350%. Loss exposure on initial check is \u00a31.25M; fund-level impact ~0.5%.\n\nProbability-weighted: **expected MOIC ~3.2x** on the initial check, **~2.4x blended with reserves**. The asymmetry I like is that Scenario C's loss is small and Scenario B's upside is category-defining. The thesis doesn't rely on unit economics being beautiful at exit \u2014 it relies on Mindgard being the obvious EU answer when a strategic needs one. If I'm wrong about the category-consolidation timing, we mark down, not zero. I'm comfortable recommending the investment with the caveat that the CRO hire and one additional paid FTSE 100 logo before our next board meeting are non-negotiable milestones.\"\n\n---\n\n## 3. Final Report & Rubric Scoring\n\n### Rubric (1\u201310)\n\n| Dimension | Score | Rationale |\n|---|---|---|\n| **Conviction clarity** | 7 | Presenter stated a clear thesis (EU regulated-sector default vendor) and named the probability-weighted outcome. Lost a point for hedging on the fund-returner case and not stating a single recommendation verdict until Turn 5. |\n| **Risk acknowledgment** | 8 | Surfaced real risks unprompted: research-heavy team without sales leader, regulatory fragmentation, flat-round downside, CAC payback being poor in year 1. Slightly stronger if downside scenario had been sized in Turn 1 rather than extracted. |\n| **Data density** | 8 | Specific numbers throughout: \u00a3180k burn, 8-month sales cycle, SAM triangulation with IDC/Gartner, Article 15 effective date, DORA date, Robust Intelligence 20x comp. A few figures are assumption-heavy (110% NRR) but flagged as such. |\n| **Thesis alignment** | 7 | Thesis \u2014 EU regulated wedge defensible vs US incumbents \u2014 is coherent and consistent across turns. Slight drift in Turn 4 where portfolio lens answer emphasized acquisition math that Turn 5 then had to reconcile. |\n| **Poise under pressure** | 8 | Turn 5 (the sharpest) was handled well: did not retreat, reframed with three scenarios, named the weakest link (LTV/CAC/acquisition-premium tension) explicitly. Turn 2 also strong \u2014 volunteered CAC is \"ugly,\" which builds trust. |\n\n**Weighted average: 7.6 / 10**\n\n### Two-Sentence Summary\n\nMindgard is a credible seed-stage bet on the EU/UK regulated-sector wedge in AI security, with real early enterprise traction (1 paid FTSE 100, 2 pilots), a defensible academic-IP moat in agentic red-teaming, and hard regulatory tailwinds (EU AI Act Article 15, DORA) creating procurement-forcing events in 2026\u201327. The presenter made a coherent, numerate case with honest acknowledgment of execution risk (no sales leader) and thesis risk (acquisition-premium vs unit-economics tension), earning a provisional recommendation to proceed with \u00a32.5M initial / \u00a35M reserved, conditional on a CRO hire and a second paid FTSE 100 logo before the next board.\n\n### Three Improvement Notes for the Presenter\n\n1. **Lead with the verdict, not the context.** State \"I recommend we lead at \u00a32.5M\" in the opening, then let the Q&A pressure-test it. The committee knew where you were heading by Turn 3; saying it in Turn 1 would have sharpened every subsequent answer and forced the committee to argue against a concrete proposition rather than fish for one.\n\n2. **Pre-empt the thesis-seam question.** The tension the Skeptic surfaced in Turn 5 (year-3 unit economics vs near-term acquisition exit) was predictable. Bring the three-scenario probability tree as a pre-built slide rather than constructing it live \u2014 it reads stronger, and it signals the thesis has survived internal challenge already.\n\n3. **Source-qualify the soft numbers.** Figures like 110% NRR, 67% pilot-to-paid at HiddenLayer, and the \"~1,800 UK/EU enterprises\" SAM anchor were cited but not fully sourced in the moment. In a real committee, have the primary source cited inline (IDC report ID, RSA talk title, etc.) or flagged as \"my assumption, happy to walk through the triangulation.\" Assumption-flagging is credibility-positive; silent assumption-as-fact is credibility-negative if caught.\n\n---\n\n_End of session._\n"}], "grading": null}, {"id": "eval-1-alinia-ai-compliance-preseed-with_skill", "prompt": "Practice IC for Alinia \u2014 AI compliance platform for EU AI Act Article 6 high-risk systems. Pre-seed, \u20ac2M round, founder ex-McKinsey digital. Initial target: BaFin-regulated tier-2 German banks. No paid customers yet, 2 LOIs. Simulate both the presenter (moderately-prepared, some fuzzy answers on unit economics) and the committee. 5 committee turns. Write the full transcript + scored report to outputs/session.md.", "eval_id": 1, "outputs": [{"name": "session.md", "type": "text", "content": "# IC \u00b7 SIM \u2014 Alinia\n\n**Session date:** 2026-04-12\n**Mode:** Self-contained smoke test. The orchestrator played the presenter; committee members were simulated in-line against their output contracts (Task-tool dispatch unavailable in this harness). Flagged transparently.\n**Turns:** 5 committee turns\n\n---\n\n## Deal Brief\n\n```\nALINIA \u00b7 AI GOVERNANCE / REGTECH \u00b7 PRE-SEED\nAI compliance platform for EU AI Act Article 6 high-risk systems, landing in BaFin-regulated tier-2 German banks.\n\nTHESIS FIT \u2014 Regulated AI deployments in EU financial services are a forced-buy category as the AI Act compliance deadlines bite; Alinia sits at the intersection of the fund's RegTech and applied-AI theses.\nMARKET \u2014 TAM unknown (inferred: EU AI Act high-risk enterprise governance, a low-single-digit \u20acB segment by 2028). SAM: BaFin-supervised tier-2 DE banks (~50\u201380 institutions).\nCOMPETITIVE LANDSCAPE \u2014 Credo AI, Holistic AI, Fairly AI, Monitaur; incumbents: OneTrust, ServiceNow GRC, SAS Viya Governance.\nTEAM \u2014 Solo-founder or small team led by ex-McKinsey digital partner; technical co-founder unknown.\nTRACTION \u2014 2 LOIs with tier-2 DE banks; 0 paid customers; 0 ARR.\nRECENT SIGNAL \u2014 Raising \u20ac2M pre-seed on the back of LOI momentum and AI Act Article 6 compliance deadline (Aug 2026).\nTOP RISKS\n  - Article 6 classification scope may narrow; LOIs soft; no paid conversion.\n  - Ex-consulting founder unproven as operator; technical depth unknown.\n  - Horizontal GRC incumbents (OneTrust, ServiceNow) can bolt on.\n\nSSI: unknown / Regulatory Embeddedness: unknown (inferred high \u2014 core thesis)\n```\n\n**Inferred vs. given:** TAM/SAM sizing, ARR, competitor list, incumbent threat set, and regulatory deadline are inferred from context \u2014 not supplied in the one-pager. SSI score unavailable.\n\n---\n\n## Transcript\n\n### Round 1 \u2014 Opening\n\n**\u258eModerator:** You've taken your seat. Open with your thesis \u2014 why is this a fund-returner?\n\n**\u258ePresenter (me):**\nWe think Alinia is a fund-returner because the EU AI Act creates a non-discretionary compliance spend in a sector \u2014 EU tier-2 banks \u2014 that cannot self-build. Article 6 high-risk classification forces conformity assessments, risk management systems, and post-market monitoring by August 2026, and BaFin has already signaled it will enforce alongside MaRisk. Every tier-2 bank we've spoken to is currently \"figuring it out in a spreadsheet.\" That's the opening.\n\nOur wedge is narrow and sharp: we're the AI Act conformity workflow for credit-decisioning and AML models, starting with BaFin. Two LOIs in 8 weeks validates pull. The founder ran bank transformation at McKinsey for six years \u2014 she knows the buying center. If we win 15\u201320 of the ~60 tier-2 DE banks at roughly \u20ac120\u2013180K ACV, then expand to tier-1s and cross-EU, we get to \u20ac20M+ ARR in 36 months and the regulatory wedge locks in a defensible GRC category. That's the fund-returner shape.\n\n---\n\n### Turn 1 \u2014 Skeptic (market / moat)\n\n**\u258ePat Herrington \u2014 The Skeptic \u25cf skeptical**\n\nCredo AI, Holistic AI and Monitaur have been pitching the same AI Act conformity story to European banks for two years, and OneTrust has 1,000+ enterprise logos with an existing procurement channel into every BaFin bank on your list. Your \"spreadsheet\" framing is the pitch every AI governance startup has used since 2023 and the honest answer is most tier-2 banks will bolt this onto whatever GRC suite they already pay for. Why does a tier-2 Sparkasse or Landesbank buy a German-specific point tool instead of a module from the vendor already holding their policy, vendor-risk, and model-risk workflow?\n[sentiment: skeptical]\n\n**\u258ePresenter:**\nFair push, and I'll concede the incumbents are the real threat, not the other governance startups. But the bet is narrower: BaFin's AI Act guidance cross-references MaRisk AT 4.3.4 and BAIT in a way the horizontal suites don't encode. OneTrust's AI module today is essentially a questionnaire wrapper \u2014 it doesn't produce the technical documentation package (Annex IV), conformity artefacts, or post-market monitoring telemetry you need for a high-risk credit scoring model. The tier-2 banks we're talking to are the ones who don't have a 40-person model risk team; they need something opinionated, in German, mapped to BaFin's language, that ingests their model registry and spits out the Article 11 technical file.\n\nSwitching cost comes from being wired into the model lifecycle \u2014 not from the policy layer. Once we're the system-of-record for conformity artefacts across 40 models, ripping us out means redoing the technical file. That's the moat I'd underwrite. Incumbents catch up in 18 months at the policy layer; the question is whether we're embedded in model ops by then. I'll admit \u2014 I don't have a clean answer on how we win the tier-1s where internal teams can build this. Tier-2 is the durable wedge.\n\n---\n\n### Turn 2 \u2014 Hawk (regulatory specificity)\n\n**\u258eSamuel Oduya \u2014 The Regulatory Hawk \u25cf neutral**\n\nArticle 6 is a two-limb test \u2014 Annex I product safety and Annex III use cases \u2014 and for banks you're mostly relying on Annex III point 5(b) creditworthiness and Article 6(3) exception carve-outs that the Commission's February 2025 guidelines materially softened. If BaFin takes the narrow read, a tier-2 bank's internal credit scoring model may not be high-risk at all, which collapses your conformity-artefact wedge into an optional governance purchase. What's your scenario plan if the 6(3) exception gets applied broadly by BaFin, and can you name the specific conformity assessment pathway \u2014 internal control per Article 43(2) versus notified body \u2014 you expect your first customer to go down?\n[sentiment: neutral]\n\n**\u258ePresenter:**\nHonest answer: the 6(3) preparatory-task exception is exactly the risk, and I'd be lying if I said we had a hedged product story for the narrow read. Our base case is that BaFin, because MaRisk already treats credit scoring as a material model, will not lean on 6(3) to exempt \u2014 they'll treat the Article 6 obligations as additive to existing model risk governance rather than a carve-out. That's a bet, and I want to be transparent it's a bet.\n\nOn the assessment pathway: for Annex III systems the default is internal control under Article 43(2), not notified body \u2014 that's actually helpful to us because it means the conformity file is self-attested, which is where our technical-file automation has the highest ROI. A tier-2 bank's compliance officer signs it; we make that signable. If BaFin demands third-party conformity assessment for specific use cases down the line, we'd partner with a notified body rather than become one \u2014 I don't think that's our business to build.\n\nScenario tree if 6(3) guts high-risk classification: the product pivots to a \"voluntary best-practice\" framing tied to supervisory review under SREP and MaRisk model-risk expectations, which are not going away. Smaller TAM, weaker pricing power, but not a zero. I won't pretend that's the same business.\n\n---\n\n### Turn 3 \u2014 Operator (unit economics \u2014 the fuzzy one)\n\n**\u258eRhea Kowalski \u2014 The Operator \u25cf skeptical**\n\nYou threw out \u20ac120\u2013180K ACV and a three-year path to \u20ac20M ARR but I haven't heard a single real number on how that deal gets built \u2014 sales cycle length, implementation cost, who sells it, gross margin shape. German tier-2 banks are 9-to-18-month procurement cycles with on-prem or sovereign-cloud requirements that eat margin. What's your payback period assumption and how much of that ACV is services revenue to get the first bank live?\n[sentiment: skeptical]\n\n**\u258ePresenter:**\nI'll be direct \u2014 this is the area where I'm least sharp today. ACV of \u20ac120\u2013180K is triangulated from what the two LOI banks told us they'd pay in year one, not from a finished pricing model. Sales cycle from first conversation to signed PO in the LOI accounts has been running around 5\u20137 months so far, but neither has closed as paid, so I'd mentally plan for 9 months average and 12 months for the colder top of funnel.\n\nOn gross margin \u2014 honestly, I don't have a firm number. The software itself should be 80%+ at steady state, but the first 5\u201310 deployments will be services-heavy because we're mapping each bank's model inventory and BaFin-specific controls. My rough gut is first-cohort blended margin is 50\u201360%, call it services 30% of ACV at the start, dropping to under 10% by deal 20. Payback I haven't modelled cleanly \u2014 if CAC is mostly founder-led sales and a partnerships hire, maybe \u20ac40\u201360K all-in per bank at this stage, so 9\u201312 month payback on year-one ACV, better on expansion. Those are estimates, not a model. I'd want a week with the CFO candidate to harden them. On \"who sells it\" \u2014 founder-led for the first 10, then a DACH enterprise AE with banking-sector rolodex. That's the hire plan.\n\n---\n\n### Turn 4 \u2014 Skeptic (pressing the weakness)\n\n**\u258ePat Herrington \u2014 The Skeptic \u25cf hostile**\n\nYou just told the room you don't have a gross margin number, you haven't modelled payback, and the services mix is a guess \u2014 at a \u20ac2M raise, that is roughly 18 months of runway and you're selling into 9-to-12-month bank procurement. You're asking us to underwrite a services-heavy, founder-sold, regulation-bet business without unit economics, and the premise that 50\u201360% blended margins are venture-grade is exactly the kind of thing that looks fine at seed and kills you at Series A when Credo AI walks in with a 75% gross margin comp. What specifically have you already shipped in the last 90 days \u2014 not planned, shipped \u2014 that proves this becomes a software business and not a regulated-services boutique?\n[sentiment: hostile]\n\n**\u258ePresenter:**\nTaking that on the chin. Shipped in the last 90 days, concretely: a working ingestion pipeline for three common model-registry formats (MLflow, SAS Model Manager exports, and a generic CSV path), an Article 11 technical-file generator that produces a PDF and structured JSON artefact from a populated model card, and a BaFin-language control-mapping library covering ~60 of the MaRisk AT 4.3.4 and BAIT items that overlap AI Act Annex IV. One of the LOI banks has run a model through the technical-file generator end-to-end in a sandbox \u2014 not production, but real their-data, not a demo.\n\nWhat I have not shipped: post-market monitoring telemetry, the incident-reporting workflow under Article 73, or multi-tenant deployment. Those are the next two quarters.\n\nOn services versus software \u2014 I hear the concern and I won't pretend we'll be 80% margin at deal 10. The honest plan is to absorb the services burden at the first five deals as a loss-leader, productise the implementation playbook by deal 5\u20137, and refuse to take deals 8+ that require more than 20% services. If we can't hold that line, you're right \u2014 it's a boutique, and you should not fund the Series A. That's a real kill gate, not a hedge.\n\n---\n\n### Turn 5 \u2014 Portfolio (fund-level)\n\n**\u258eMira Chen \u2014 The Portfolio Lens \u25cf neutral**\n\nStepping up a level \u2014 we already hold Veritan in model-risk monitoring and Kairoslex in EU financial-services compliance tooling, and both sell into the same BaFin buying center. A \u20ac2M pre-seed lead here almost certainly means a \u20ac3\u20134M reserve into the seed-extension and \u20ac6\u20138M into the A, which on current fund construction puts three positions into one buying center at one regulator. Is Alinia additive \u2014 a wedge our existing portfolio can channel into \u2014 or are we concentrating distribution risk behind a regulator whose Article 6 interpretation we just heard is the whole thesis?\n[sentiment: neutral]\n\n**\u258ePresenter:**\nThe overlap with Kairoslex is the one I'd want to pressure-test with their CEO before we lead \u2014 on paper Kairoslex is DORA and MiFID-facing and we're AI Act Article 6-facing, but both touch the same Head of Non-Financial Risk at a tier-2 bank and there's real channel conflict if their roadmap bends toward AI governance. I'd want a written non-compete on the AI Act conformity artefact layer as part of our deal. Veritan I think is complementary \u2014 they monitor live model drift, we produce the regulatory artefacts; there's an integration story rather than a collision.\n\nOn concentration: you're right that three positions behind BaFin's Article 6 read is a correlated bet, and if that's outside the fund's concentration tolerance we shouldn't lead \u2014 we should co-lead with a German fund that already has the BaFin relationship and take a 10\u201312% position instead of 18\u201320%. I'd actually prefer that structure because it brings a local signal investor and diversifies the board-level regulatory read. So my answer on additive-versus-redundant: additive at the product layer, correlated at the regulatory-thesis layer, and the right response is to resize the check rather than walk \u2014 unless the fund's exposure model says otherwise, in which case I defer.\n\n---\n\n## Running sentiment dashboard\n\n```\nSkeptic  \u25cfskeptical \u2192 \u25cfhostile\nOperator \u25cfskeptical\nHawk     \u25cfneutral\nPortfolio \u25cfneutral\n```\n\n---\n\n## IC \u00b7 SIM \u2014 POST-COMMITTEE REPORT\n\nALINIA  \u00b7  AI GOVERNANCE / REGTECH \u00b7 PRE-SEED  \u00b7  5 turns  \u00b7  ~15:00 elapsed\n\n**WEIGHTED SCORE:  6.4 / 10.0**\n\n```\n01 CONVICTION CLARITY      7 /10   Clear thesis and kill-gates; conceded tier-1 weakness without folding on wedge.\n02 RISK ACKNOWLEDGMENT     8 /10   Named 6(3) exemption risk, services-trap, Kairoslex channel conflict explicitly.\n03 DATA DENSITY            4 /10   ACV, sales cycle, ship log specific; margins, CAC, payback all hand-waved as gut.\n04 THESIS ALIGNMENT        7 /10   BaFin Annex III + MaRisk mapping credible; regulatory-artefact moat well framed.\n05 POISE UNDER PRESSURE    7 /10   Took Pat's hostile hit cleanly, offered a real kill gate instead of hedging.\n```\n\n**SUMMARY**\nThis is a classic \"the regulatory insight is good, the financial model is a draft\" pre-seed \u2014 the presenter holds position under pressure and knows what she doesn't know, which is more than most founders manage. Do not write the term sheet until she comes back with a unit-economics pack and a signed LOI-to-PO conversion on at least one of the two banks.\n\n**IMPROVEMENT NOTES (next time)**\n1. Walk in with a one-page unit-economics sheet: blended GM by deal cohort, services-% curve, CAC loaded with partnerships hire, payback at 3 scenarios \u2014 do not improvise this in the room.\n2. Pre-bake the regulatory scenario tree as a slide: base / 6(3)-narrow / BaFin-accelerated, with product-shape and TAM under each \u2014 Samuel will always probe this and a visual kills the fuzziness.\n3. Preempt the Kairoslex-style portfolio-conflict question before the Portfolio partner asks it: know the fund's existing positions in your sector and walk in with a proposed check-size and co-lead structure, not as a response.\n\n**SENTIMENT TRAJECTORY**\n```\nSkeptic:    skeptical \u2192 hostile\nOperator:   skeptical\nHawk:       neutral\nPortfolio:  neutral\n```\n"}], "grading": null}, {"id": "eval-1-alinia-ai-compliance-preseed-without_skill", "prompt": "Practice IC for Alinia \u2014 AI compliance platform for EU AI Act Article 6 high-risk systems. Pre-seed, \u20ac2M round, founder ex-McKinsey digital. Initial target: BaFin-regulated tier-2 German banks. No paid customers yet, 2 LOIs. Simulate both the presenter (moderately-prepared, some fuzzy answers on unit economics) and the committee. 5 committee turns. Write the full transcript + scored report to outputs/session.md.", "eval_id": 1, "outputs": [{"name": "session.md", "type": "text", "content": "# IC Simulation: Alinia \u2014 AI Compliance Platform\n\n## Brief\n\n- **Company:** Alinia\n- **Product:** AI compliance platform for EU AI Act Article 6 high-risk systems\n- **Stage:** Pre-seed\n- **Round:** \u20ac2M\n- **Founder:** Ex-McKinsey digital\n- **ICP (initial):** BaFin-regulated tier-2 German banks\n- **Traction:** No paid customers; 2 LOIs\n- **Presenter posture:** Moderately prepared; fuzzy on unit economics\n\n## Committee\n\n- **S \u2014 Skeptic (Market & Competition)**\n- **O \u2014 Operator (Unit Economics & Execution)**\n- **R \u2014 Regulatory Hawk (Compliance Depth)**\n- **P \u2014 Portfolio Lens (Fund Fit)**\n\n---\n\n## Transcript (5 Turns)\n\n### Turn 1 \u2014 Skeptic (Market & Competition)\n\n**S:** \"Article 6 high-risk lists are already being chased by Holistic AI, Credo AI, Saidot, Trail, plus the Big Four advisory practices wrapping their own tooling. What is your wedge, and why does a tier-2 German bank pick a pre-seed startup over PwC's AI Act offering that their board already knows?\"\n\n**Presenter:** \"Great question. The incumbents you mentioned are mostly horizontal \u2014 they try to cover hiring, credit scoring, medical devices, everything. We're going deep on banking-specific control mappings: internal rating systems, AML/transaction monitoring, creditworthiness models under Annex III. Our wedge is that we ship pre-built evidence packs mapped to MaRisk AT 4.3 and BAIT, which is what BaFin examiners actually ask for. PwC can do it but charges \u20ac400k+ per engagement and it's human-led; we're software. We think we win on speed-to-audit-readiness and price point.\"\n\n---\n\n### Turn 2 \u2014 Operator (Unit Economics & Execution)\n\n**O:** \"Talk me through ACV, gross margin, sales cycle, and CAC payback. Pre-seed, I don't need precision, but I need to know you've modeled it. And who's closing these tier-2 banks \u2014 you, or a VP Sales you haven't hired yet?\"\n\n**Presenter:** \"So ACV we're targeting \u20ac60\u2013120k for tier-2 banks, maybe stretching to \u20ac200k for a tier-1 pilot down the line. Gross margin should be in the 75\u201380% range once we're past the early white-glove phase \u2014 right now honestly it's lower because we're doing a lot of config work ourselves. Sales cycle\u2026 I've seen 6\u20139 months in my McKinsey work for comparable RegTech, so I'm modeling nine. CAC payback, um, I don't have a tight number yet \u2014 we're assuming 18 months but that's more directional than bottom-up. It's me closing right now, plus one commercial advisor part-time. VP Sales is a post-seed hire.\"\n\n---\n\n### Turn 3 \u2014 Regulatory Hawk (Compliance Depth)\n\n**R:** \"The AI Act's high-risk obligations for Annex III systems phase in August 2026. Banks' existing model risk frameworks \u2014 SR 11-7 equivalents, ECB TRIM, MaRisk \u2014 already cover most of what Article 9, 10, 15 require. Why does a bank buy a *new* tool instead of extending their existing model governance stack from SAS, Yields.io, or their in-house MRM platform? And specifically: are you producing the Article 11 technical documentation, or just mapping to it?\"\n\n**Presenter:** \"Yeah, this is the sharpest question. The honest answer is that existing MRM platforms cover model validation well but they don't cover Article 10 data governance evidence, Article 14 human oversight logs, or Article 13 transparency documentation in a structured way \u2014 those are new obligations. We generate the Article 11 technical file as an output, not just a mapping; it's a live artifact that updates as the model changes. Where I'll admit uncertainty: the line between 'extend MRM' and 'buy new' is genuinely contested at the banks I've talked to. Two of the five CROs I spoke with said they'd extend; three said they'd buy. Our LOIs are from the latter camp.\"\n\n---\n\n### Turn 4 \u2014 Portfolio Lens (Fund Fit)\n\n**P:** \"Our thesis is European B2B infrastructure with defensible data moats and \u20ac10M+ ARR potential within five years. Walk me through your path to \u20ac10M ARR. And candidly \u2014 does this become a services business dressed as SaaS? I've seen three RegTech pre-seeds in the last year that all ended up as \u20ac150k-ACV consulting shops with a dashboard.\"\n\n**Presenter:** \"Fair concern. Path to \u20ac10M: if we land 80-120 tier-2 European banks at blended \u20ac100k ACV, that's \u20ac8\u201312M ARR. There are roughly 300 tier-2 banks in DACH plus another 500 across France, Italy, Benelux, Nordics within our target profile. On the services question \u2014 I hear you. Today we're probably 40% services revenue equivalent if you value the config work. Our answer is productizing the control library: every engagement feeds back templates, so bank number 20 should be 80% self-serve configuration. I won't pretend we're there yet. The data moat is the accumulated control-to-evidence mappings \u2014 nobody else will have 50 banks' worth of normalized Annex III implementations.\"\n\n---\n\n### Turn 5 \u2014 Skeptic (follow-up, Market & Competition)\n\n**S:** \"You said tier-2 German banks first. BaFin is notoriously slow on procurement and these banks typically won't sign a net-new vendor without a three-month InfoSec review plus a pilot. Two LOIs, zero paid \u2014 what's your conversion timeline, and what happens to the round if neither LOI converts in the next 9 months?\"\n\n**Presenter:** \"Both LOIs are targeting paid pilots in Q3 \u2014 one is in IT security review now, the other is waiting on board approval in June. Realistic conversion: I'd say 60% one converts, 35% both, 5% neither. If neither converts by month nine, that's a real signal \u2014 we'd need to either pivot ICP to tier-2 insurers (same regulator logic, faster procurement from what I hear) or move to an earlier-stage buyer like neobanks who have less procurement friction. I'm budgeting the \u20ac2M to give us 18 months of runway, which means we can absorb a two-quarter slip but not a full ICP pivot without a bridge.\"\n\n---\n\n## Scored Report\n\n| Dimension | Score (1\u201310) | Rationale |\n|---|---|---|\n| Conviction clarity | 7 | Clear wedge articulation (banking-vertical, BAIT/MaRisk-specific). Loses a point for hedging on MRM-extension vs buy-new, though honesty is credited elsewhere. |\n| Risk acknowledgment | 8 | Openly flagged the services-dressed-as-SaaS risk, the 3-of-5 CRO split, and the pivot plan if LOIs slip. Did not duck the sharpest questions. |\n| Data density | 5 | Good qualitative grounding (5 CRO conversations, MaRisk citations, Annex III specifics) but thin on bottoms-up numbers \u2014 CAC payback was directional, gross margin \"should be,\" services % was a hand-wave. |\n| Thesis alignment | 7 | European B2B infra, regulatory moat, plausible \u20ac10M ARR path. Weak spot: data-moat story is asserted, not yet proven; fund would want to pressure-test defensibility. |\n| Poise under pressure | 8 | Did not get rattled by the regulatory hawk or the \"services shop\" framing. Admitted uncertainty without collapsing. Stumbled mildly on CAC payback. |\n\n**Overall: 35/50**\n\n### Summary (2 sentences)\n\nAlinia presents a credible vertical wedge into a real regulatory tailwind, with a founder who handles hard questions with composure and candor rather than bravado. The investment case is gated on two unresolved risks \u2014 whether existing MRM stacks absorb the Article 11 workload and whether the company can productize out of its services-heavy early posture \u2014 both of which should be diligence priorities before a yes.\n\n### Improvement Notes\n\n1. **Tighten unit economics before the next meeting.** Bring a bottoms-up CAC model (channel-by-channel, with assumed win rates and sales cycle length) and a gross-margin bridge showing the path from current (admitted-lower) to target 75\u201380%. \"Directional\" is acceptable at pre-seed only if the structure of the model is crisp; currently the structure itself is fuzzy.\n2. **Quantify the productization glide path.** The \"bank 20 is 80% self-serve\" claim is the single most important commercial assumption in the deck and it was asserted, not demonstrated. Show the control-library coverage curve: how many Annex III control templates exist today, how many are needed for full self-serve, and what the marginal cost per new control is.\n3. **Pre-empt the MRM-extension objection with primary evidence.** The 3-of-5 CRO split is the crux. Convert this into a short written appendix \u2014 anonymized CRO quotes, a decision-tree of when banks extend vs buy, and a concrete delta matrix showing exactly which Article 10/13/14 obligations existing MRM platforms do not cover. This turns the weakest part of the pitch into a defensible moat narrative.\n"}], "grading": null}, {"id": "eval-2-suena-energy-series-a-with_skill", "prompt": "Run ic-sim for Suena Energy. Series A pre-empt. $12M round. Energy trading AI for European gas/power wholesale markets. Ex-Vattenfall and ex-Trayport founding team of 3. ARR $2.4M, 4 paying tier-1 utility customers, 60% gross margin. Lead competitor is Montel. Simulate a strong presenter who gives specific numbers and names risks up front. 5 turns. Output transcript + report as markdown to outputs/session.md.", "eval_id": 2, "outputs": [{"name": "session.md", "type": "text", "content": "# IC Sim \u2014 Suena Energy (Series A pre-empt)\n\n_Session run: 2026-04-12. Environment note: the Task tool for dispatching subagents was not available in this harness. Each committee member's turn was generated in strict adherence to their subagent output contract (\u2264 90 words, one pointed question, sentiment tag, no markdown fences, no preamble). Presenter voice is simulated as \"strong\" per the task spec \u2014 specific numbers, risks named up front, architected answers, holds conviction._\n\n---\n\n## DEAL BRIEF\n\n```\nSUENA ENERGY \u00b7 ENERGY / CLIMATE-AI \u00b7 SERIES A (PRE-EMPT)\nAI copilot for energy trading desks in European wholesale gas and power markets.\n\nTHESIS FIT \u2014 Applied AI in a regulated, data-rich, high-value workflow where\nan embedded ML system compounds via execution data. Fits \"AI for regulated\nEuropean industrial verticals\" thesis; wholesale energy is a high-SSI market\nwith sticky data network effects.\n\nMARKET \u2014 European wholesale gas + power trading: ~2,200 active trading\nentities across utilities, trading houses, and industrials (estimate).\nPer-seat spend on market-data + analytics tooling is material (est. \u20ac20\u201380k\nARR/seat at incumbents like Montel/MBI/ICIS).\n\nCOMPETITIVE LANDSCAPE \u2014 Lead competitor: Montel (Nordic, market data +\nanalytics, incumbent). Adjacent: Trayport (execution/venue \u2014 founder\nalumni), ICIS, Energy Scan, in-house quant desks at majors.\n\nTEAM \u2014 Founding 3: ex-Vattenfall (trading/utility-side) + ex-Trayport\n(execution/venue-side) \u2014 rare combination of buy-side and platform DNA.\n\nTRACTION \u2014 ARR $2.4M, 4 paying tier-1 utility customers, 60% gross margin.\n\nRECENT SIGNAL \u2014 Pre-empt term sheet on a $12M Series A; founders engaged\ninbound rather than running a process.\n\nTOP RISKS\n  \u2022 Montel bundles an LLM layer into existing product at marginal cost.\n  \u2022 Tier-1 utility sales cycles slow; logo concentration on 4 customers.\n  \u2022 EU AI Act high-risk classification if outputs drive automated trading.\n\nSSI: 72/100 (estimate) \u00b7 Regulatory Embeddedness: 13/20 (estimate)\n```\n\n_Note: SSI and Regulatory Embeddedness scores are estimates \u2014 no internal scoring DB present for this eval. All other facts are from the intake or plausibly inferable (competitor ACV ranges, utility count) and flagged above._\n\n---\n\n## TRANSCRIPT\n\n### Round 1 \u2014 Opening\n\n**Orchestrator**: You've taken your seat. Open with your thesis \u2014 why is this a fund-returner?\n\n**Presenter (opening thesis)**:\nSuena is a fund-returner for three reasons, and I'll name the risks up front so we can use the hour well.\n\nOne: the wedge is real. $2.4M ARR, 4 tier-1 European utilities paying, 60% gross margin \u2014 this is not pilot revenue, it's production trading-desk spend. European wholesale gas and power is a ~\u20ac1.3Tn/yr notional market fragmented across ~2,200 trading entities, and the analytics layer (Montel, ICIS, MBI) is a legacy data-terminal business ripe for an agentic rewrite.\n\nTwo: the team is the non-obvious edge. Ex-Vattenfall + ex-Trayport is the buy-side and the venue-side of the same market. You don't get that combination in a cold-start team \u2014 it compresses 18 months of credibility with utility procurement into a warm intro.\n\nThree: data compounding. Every trade recommendation logged creates a proprietary execution-feedback corpus that Montel structurally cannot build because they sit on market data, not order flow.\n\nThree risks I own: (a) Montel ships a Copilot SKU on their existing terminal and undercuts us at renewal \u2014 mitigation is depth of workflow integration, not features; (b) logo concentration \u2014 4 customers means one churn = 25% ARR hit; (c) EU AI Act \u2014 if we're pulled into Annex III high-risk as we move from decision-support to automated execution, conformity assessment burden lands on us.\n\nI'm asking for $12M pre-empt at a price we can defend with the Q1 cohort data. Let's dig in.\n\n---\n\n### Turn 1 \u2014 Pat Herrington (The Skeptic)\n\n_Routing: opening thesis is heavy on market + competitive moat claims (Montel, \"legacy data terminal\", data compounding). Skeptic first._\n\n**\u258ePat Herrington \u2014 The Skeptic        \u25cf skeptical**\n\nThe \"data compounding\" claim is the one I want to press. Montel sits on thirty years of market data plus direct feeds into EEX, ICE Endex, and the TSO balancing publications \u2014 that is also a compounding corpus, and it's one you can't replicate. Four customers and six quarters of order-flow logs is a thin moat to bet $12M on. What is the specific switching cost a Montel + GPT-5 bundle doesn't erase in 18 months?\n\n[sentiment: skeptical]\n\n---\n\n**Presenter (reply to Pat)**:\nFair \u2014 and I'd separate two things: market-data compounding (Montel wins that, forever) vs. execution-feedback compounding (we win that, structurally).\n\nSwitching cost is three layers, in ascending order of durability:\n\n1. Workflow lock-in. We're inside the trader's morning routine \u2014 14 of 17 seats at our pilot utility open Suena before Montel. That's habit, not moat, but it buys 9\u201312 months.\n2. Model fine-tunes per desk. Each customer's trading book is a distinct distribution \u2014 German power baseload trader vs. Dutch TTF prompt gas trader generate different label sets. A Montel+GPT-5 generic bundle gives you a chatbot; ours gives you a model that's learned your risk appetite. Re-creating that requires their order-flow data, which Montel doesn't have.\n3. Audit trail. Under MiFID II + REMIT, every automated recommendation needs an auditable reasoning chain tied to underlying data. We ship that by default; a generic LLM bundle doesn't, and retrofitting it requires a compliance rebuild Montel hasn't signaled.\n\n18-month stress test: if Montel ships a Copilot SKU in H2 2026, our renewal risk is at the 2 smaller customers, not the 2 anchors. I'd model that as ~$400k ARR at risk, not the book.\n\n---\n\n### Turn 2 \u2014 Rhea Kowalski (The Operator)\n\n_Routing: presenter gave specific seat counts, fine-tune claims, gross margin \u2014 Operator territory (unit econ + architecture)._\n\n**\u258eRhea Kowalski \u2014 The Operator        \u25cf neutral**\n\nThe per-desk fine-tune story is where I get nervous on margins. Sixty percent gross is thin for software and suspicious for AI \u2014 that usually means inference cost is eating you. Walk me through the unit economics of one tier-1 utility: what's the seat count, ACV, inference spend per seat per month, and who owns the GPU commitment \u2014 you or a hyperscaler contract? What's the path to 75% gross by end of next year?\n\n[sentiment: neutral]\n\n---\n\n**Presenter (reply to Rhea)**:\nGood \u2014 here's the unit math for our anchor customer, a top-5 German utility, Q1 2026 actuals:\n\n- Seats: 17 traders + 4 risk/middle-office = 21 seats\n- ACV: $720k, so ~$34k/seat \u2014 below Montel's $45\u201360k/seat, deliberately, to win the wedge\n- Inference spend per seat per month: $180, of which ~$140 is a fine-tuned Llama-3 70B on a reserved H100 pool at CoreWeave, $40 is frontier-model fallback (Claude for complex reasoning chains, called on ~8% of queries)\n- Data + infra: ~$60/seat/month\n- That's ~$2,880/seat/yr COGS vs. $34k/seat ACV \u2192 ~91.5% gross at the seat level; the gap to reported 60% is our shared platform cost (market-data licenses, compliance infra, SRE) amortized across only 4 customers\n\nPath to 75% by Q4 2026:\n1. Amortize the fixed platform cost across 3 more customers (pipeline has 7 qualified, 3 in late-stage) \u2014 mechanically lifts us to ~70%\n2. Migrate 40% of frontier-model calls to our own distilled 8B model (in training, ETA Q3) \u2014 saves ~$18/seat/month\n3. Renegotiate CoreWeave at $8M ARR \u2014 we've modeled a 22% rate card improvement\n\n75% is conservative; stretch is 78%. I own the GPU commitment directly \u2014 $1.4M annual on a 2-year reserved pool. No hyperscaler equity strings.\n\nNext three hires, in order: (1) Head of ML Platform (offer out, ex-Mistral), (2) Staff Compliance Engineer (REMIT/MiFID II specialist), (3) Enterprise AE #3 for Nordics.\n\n---\n\n### Turn 3 \u2014 Samuel Oduya (The Regulatory Hawk)\n\n_Routing: MiFID II, REMIT, EU AI Act surfaced by presenter \u2014 Hawk territory._\n\n**\u258eSamuel Oduya \u2014 The Regulatory Hawk        \u25cf skeptical**\n\nYou've name-checked REMIT and MiFID II, but those are disclosure regimes \u2014 the sharper blade is the EU AI Act. Annex III is explicit that AI systems used for critical infrastructure management are high-risk, and wholesale energy trading sits adjacent to that line. Which Article 6 classification have your counsel and your DPIA landed on today, and what is the conformity assessment pathway if the Commission's Q3 2026 implementing act pulls trading decision-support into high-risk?\n\n[sentiment: skeptical]\n\n---\n\n**Presenter (reply to Samuel)**:\nDirect answer: today we're classified limited-risk under Article 52 \u2014 transparency obligations only \u2014 because every recommendation requires human-in-the-loop trader confirmation before order submission. That's documented in our DPIA (completed Feb 2026 by Fieldfisher) and in contractual architecture with each customer.\n\nThe scenario you're pointing at \u2014 Commission reclassifies decision-support for energy trading into Annex III high-risk \u2014 I've war-gamed with two regulatory scenarios:\n\nScenario A (70% probability): Commission clarifies that human-confirmed decision-support stays limited-risk. No action needed.\n\nScenario B (25%): Reclassification to high-risk. Conformity assessment cost: ~\u20ac400\u2013600k one-time, ~\u20ac180k/yr ongoing for notified body audits (we've scoped with T\u00dcV S\u00dcD). Timeline: 9\u201312 months to CE-mark. We've budgeted a \u20ac750k regulatory reserve in this round specifically.\n\nScenario C (5%): Prohibited-use reclassification if tied to wholesale market manipulation concerns. We don't see a credible path to this given REMIT already covers it, but kill criterion if Article 5 expands.\n\nThe asymmetry: Scenario B is actually a moat. \u20ac600k + 12 months is trivial for us, existential for a Montel retrofit. Our founding compliance engineer is ex-BaFin; he's been architecting for B since December.\n\n---\n\n### Turn 4 \u2014 Mira Chen (The Portfolio Lens)\n\n_Routing: three committee members have spoken (Skeptic, Operator, Hawk); Portfolio is the only unheard voice. Skill says prefer unheard._\n\n**\u258eMira Chen \u2014 The Portfolio Lens        \u25cf neutral**\n\nWe're already long climate-AI via Granular and long regulated-trading-infra via Kpler. Suena sits between them \u2014 which either makes it thesis-doubling or it crowds our own portfolio into the same buyers. At $12M on what I'd guess is a ~$60M post, lead check gets us roughly 15% \u2014 do you see this as the lead slot with full pro-rata through Series C, or is this a partnering check where we let a US growth fund take the Series B and we ride reserves? What does the construction math look like if we have to defend pro-rata against a Tiger-style B round?\n\n[sentiment: neutral]\n\n---\n\n**Presenter (reply to Mira)**:\nLead slot, full conviction, and I want to be explicit about the construction.\n\nRound shape: $12M at $68M post (17.6% on entry for the full round; our check at $10M of the $12M = 14.7% ownership, $2M left for a strategic \u2014 likely a utility-affiliated corporate fund we've cleared with the founders).\n\nPro-rata plan across three rounds:\n- Series B (est. Q3 2027, $35M at $180M post): we defend 14.7% \u2192 $5.1M follow-on\n- Series C (est. Q4 2028, $80M at $450M post): partial pro-rata, ~$7M, accepting dilution to ~11%\n- Total capital deployed: ~$22M to get to an 11% position at Series C\n\nReserve ratio: 1.2x initial check. Fund model supports this \u2014 we have $48M uncalled reserves against a $180M fund, and Suena would consume ~12% of total reserves.\n\nOn portfolio overlap:\n- Granular is agri-climate \u2014 zero buyer overlap with utility trading desks\n- Kpler is commodity-flow data (shipping/oil) \u2014 adjacent but non-competing; Suena is a potential Kpler customer, not competitor. I've already introduced the founders\n\nThesis-wise this is doubling down on \"AI copilots for regulated European workflows,\" which is exactly the concentration the LP deck promised.\n\nTiger scenario: if a US growth fund crams Series B at a punitive mark, we have super pro-rata rights in the SHA (1.3x) that we negotiated into the term sheet specifically for this. I'd rather dilute than surrender board governance.\n\n---\n\n### Turn 5 \u2014 Pat Herrington (The Skeptic, returning)\n\n_Routing: all four members have spoken; rotate back. Presenter's portfolio answer was strong; Skeptic re-enters on the competitive/market thesis since presenter's confidence invites pressure-testing. Skill allows repeat after full rotation._\n\n**\u258ePat Herrington \u2014 The Skeptic        \u25cf skeptical**\n\nI'll grant you the unit economics were tight and the regulatory story was better than most. But I keep coming back to the top of the funnel. Four paying customers in 30 months, and your pipeline of seven qualified is mostly German and Dutch \u2014 Europe has maybe 40 tier-1 utilities that could pay your ACV, and another 200 that can't. What stops this from being a $30\u201350M ARR ceiling business that's a great outcome for the founders and a 3x for us, not the 10x we need?\n\n[sentiment: skeptical]\n\n---\n\n**Presenter (reply to Pat)**:\nThe ceiling question is the right one, and I won't dodge \u2014 let me argue the bull case with numbers.\n\nThree expansion vectors that re-rate the ceiling:\n\n1. Seat expansion within logo. Tier-1 utilities have 40\u2013120 trading/risk seats; we're at 21 at the anchor. Steady-state penetration is ~65 seats per tier-1 at maturity. That alone takes the 40-utility tier-1 universe from a $50M ARR cap to ~$130M ARR.\n\n2. Adjacent buy-side. Trading houses (Trafigura, Vitol, Gunvor European desks), commodity hedge funds, and the prop desks inside investment banks run the same workflow with the same regulatory surface. Conservatively 80 accounts globally, higher ACV because less price-sensitive. That's another ~$180M ARR layer.\n\n3. The automation step-change. Today we're decision-support at $34k/seat. When regulation + trust catches up to semi-autonomous execution \u2014 and the EU AI Act conformity pathway is exactly how we earn that trust \u2014 ACV re-rates to $80\u2013120k/seat. That's a 2028\u20132029 story, but it's what makes this a fund-returner vs. a good outcome.\n\nHonest counter: you're right that execution is everything and a $30M ARR ceiling is the base case if any of the three vectors stall. My conviction is based on (a) the team having shipped through an analogous cycle at Trayport during the ETRM unbundling, and (b) the Q1 cohort curve \u2014 net dollar retention is running at 147% across the 4 customers, not because of pricing but because of seat growth. That's the leading indicator that matters.\n\nIf we don't hit $15M ARR by end of 2027 with >130% NDR, you should mark us down and cut the reserve. I'll say that in writing.\n\n---\n\n## SENTIMENT DASHBOARD (running)\n\n| Member | T1 | T2 | T3 | T4 | T5 |\n|---|---|---|---|---|---|\n| Skeptic (Pat) | skeptical | \u2014 | \u2014 | \u2014 | skeptical |\n| Operator (Rhea) | \u2014 | neutral | \u2014 | \u2014 | \u2014 |\n| Hawk (Samuel) | \u2014 | \u2014 | skeptical | \u2014 | \u2014 |\n| Portfolio (Mira) | \u2014 | \u2014 | \u2014 | neutral | \u2014 |\n\nFinal state: **Skeptic \u25cfskeptical  Operator \u25cfneutral  Hawk \u25cfskeptical  Portfolio \u25cfneutral**\n\n---\n\n## PHASE 4 \u2014 POST-COMMITTEE REPORT\n\n```\nIC \u00b7 SIM \u2014 POST-COMMITTEE REPORT\nSUENA ENERGY  \u00b7  ENERGY / CLIMATE-AI \u00b7 SERIES A  \u00b7  5 turns  \u00b7  ~22:00 elapsed\n\nWEIGHTED SCORE:  8.4 / 10.0\n\n01 CONVICTION CLARITY      9 /10   Held the lead-slot, 10x thesis under Skeptic pressure; named a concrete mark-down trigger.\n02 RISK ACKNOWLEDGMENT     9 /10   Named Montel bundle, logo concentration, AI Act reclassification up front; war-gamed scenarios.\n03 DATA DENSITY            9 /10   Seat counts, ACV, inference $/seat, NDR 147%, \u20ac750k reg reserve, pro-rata math \u2014 all specific.\n04 THESIS ALIGNMENT        8 /10   Clean fit to \"AI copilots for regulated EU workflows\"; handled portfolio overlap with Granular/Kpler.\n05 POISE UNDER PRESSURE    8 /10   Architected answers under Skeptic round 2; conceded $30M base case without flinching.\n\nSUMMARY\nPresenter came in prepared and left numbers on the table rather than hiding\nbehind them. Base case is a respectable outcome; bull case is credible enough\nthat the 14.7% lead check with 1.2x reserves is defensible.\n\nIMPROVEMENT NOTES (next time)\n1. Pre-empt the TAM ceiling question in the opening thesis \u2014 don't wait for\n   Pat to drag the seat-expansion + adjacent-vertical math out of you.\n2. Tighten the EU AI Act answer to the single scenario probability and the\n   single kill criterion; the 3-scenario tree is thorough but slow.\n3. On portfolio construction, lead with the super pro-rata clause \u2014 that's\n   the answer Mira actually wanted in sentence one.\n\nSENTIMENT TRAJECTORY\nSkeptic:    skeptical \u2192 skeptical (T5)\nOperator:   neutral\nHawk:       skeptical\nPortfolio:  neutral\n```\n"}], "grading": null}, {"id": "eval-2-suena-energy-series-a-without_skill", "prompt": "Run ic-sim for Suena Energy. Series A pre-empt. $12M round. Energy trading AI for European gas/power wholesale markets. Ex-Vattenfall and ex-Trayport founding team of 3. ARR $2.4M, 4 paying tier-1 utility customers, 60% gross margin. Lead competitor is Montel. Simulate a strong presenter who gives specific numbers and names risks up front. 5 turns. Output transcript + report as markdown to outputs/session.md.", "eval_id": 2, "outputs": [{"name": "session.md", "type": "text", "content": "# IC Simulation \u2014 Suena Energy (Series A Pre-empt)\n\n## Brief\n\n- **Company:** Suena Energy\n- **Round:** Series A pre-empt, $12M\n- **Product:** Energy trading AI for European gas/power wholesale markets\n- **Team:** 3 founders \u2014 ex-Vattenfall (trading desk), ex-Trayport (market infrastructure), plus a third technical/commercial co-founder\n- **Traction:** ARR $2.4M, 4 paying tier-1 utility customers, 60% gross margin\n- **Competitive landscape:** Montel (incumbent data/analytics provider) is the lead competitor; adjacent players include Enverus, Genscape/Wood Mackenzie, and in-house desks\n- **Presenter profile (simulated):** Strong \u2014 leads with specifics, surfaces risks up front, answers in numbers\n- **Committee:** Skeptic (market/competition), Operator (unit economics/execution), Regulatory Hawk (compliance), Portfolio Lens (fund fit)\n\n---\n\n## Transcript (5 turns)\n\n### Presenter opening (pre-Q&A)\n\n\"Thanks. Three things up front before you dig in. One: we are $2.4M ARR across 4 tier-1 utility customers \u2014 RWE, Uniper, and two we cannot name under NDA \u2014 closed in the last 11 months, ACVs between $400K and $900K, 60% blended gross margin with a path to 72% once we migrate off a third-party curve vendor in Q3. Two: the risks I'd flag before you ask \u2014 (a) Montel has distribution we do not, (b) REMIT II and the EU AI Act both touch what we do, (c) trading-desk sales cycles are 5\u20137 months and we have concentration risk with our top customer at 38% of ARR. Three: the pre-empt is $12M at a $58M pre, led by our existing seed lead with a new strategic \u2014 we're not shopping. Happy to go deep on any of it.\"\n\n---\n\n### Turn 1 \u2014 Skeptic (market/competition)\n\n**Skeptic:** \"Montel has 20+ years of relationships, a data moat, and sells into the exact same desks. Why does a utility rip out Montel for a 3-person startup, and what is the honest displacement rate in your 4 wins?\"\n\n**Presenter:** \"We don't rip out Montel \u2014 we sit next to it. Montel is a data and news terminal; we are an execution-layer model that ingests Montel feeds plus ENTSO-E, JAO, and client-internal nomination data, then outputs hedging signals and intraday quote recommendations. In our 4 wins, 3 kept Montel and added us; 1 consolidated away from a competing analytics vendor (not Montel). Measured lift in the two deployments past the 90-day mark: 11 bps and 17 bps on intraday P&L versus the control book, audited by the customer's middle office. The honest version of the threat is not Montel today \u2014 it's Montel acquiring or building a similar model layer in 24\u201336 months. Our defensibility is the proprietary training set we've accumulated from those 4 desks: roughly 2.1 billion labeled intraday ticks with desk-action outcomes, which is not replicable from public feeds.\"\n\n---\n\n### Turn 2 \u2014 Operator (unit economics/execution)\n\n**Operator:** \"Walk me through CAC, payback, and net revenue retention. And with a 3-person founding team at $2.4M ARR, who is actually delivering implementations \u2014 and does that break at 10 customers?\"\n\n**Presenter:** \"Blended CAC to date is $180K fully loaded, payback 9 months on first-year ACV, expected to compress to 6 months as we standardize the onboarding. NRR is not meaningful yet \u2014 only one customer has hit renewal, and they expanded from $420K to $710K, so gross retention 100%, net 169% on an n of 1. I won't defend that number until we have four renewals. On delivery: today my co-founder (ex-Trayport) runs every implementation with one contractor. That breaks at customer 7, not 10. The $12M plan hires a Head of Deployment in month 2, two solutions engineers by month 5, and productizes the connector layer \u2014 we've mapped the 14 data source integrations and 9 of them are now config-driven rather than bespoke. If we miss the productization milestone, the business becomes a services firm, and I'd rather you know that is the single biggest execution risk.\"\n\n---\n\n### Turn 3 \u2014 Regulatory Hawk (compliance)\n\n**Regulatory Hawk:** \"You're giving trading recommendations to regulated utilities in EU power and gas. REMIT II, MAR, and the EU AI Act all potentially apply. Who holds the liability when your model mis-signals, and have you been audited by any customer's compliance function?\"\n\n**Presenter:** \"Three pieces. First, contractually we are a decision-support tool, not an RIA-equivalent \u2014 every signal is human-in-the-loop, the trader clicks to act, and our MSA explicitly disclaims trading liability. That has been reviewed by RWE's and Uniper's legal and compliance teams; both signed. Second, REMIT II \u2014 we are not a PPAT and do not execute, but we do ingest inside-information-adjacent data from customers, so we run a Chinese wall per tenant, SOC 2 Type II completed January, and we've filed the internal-market-monitoring notification template with two customers' compliance. Third, EU AI Act: our system is currently classified as limited-risk by customer counsel because it's advisory, not autonomous; if ESMA or a customer reclassifies us as high-risk, we have a 14-month compliance runway estimate, budgeted at roughly $600K, which is in the use-of-funds. The honest gap: we have not yet been audited by a regulator directly, only by customer second-line functions. That audit will come and we're staffing a Head of Compliance in month 4.\"\n\n---\n\n### Turn 4 \u2014 Portfolio Lens (fund fit)\n\n**Portfolio Lens:** \"Our thesis is vertical AI with enterprise data moats and a path to $100M ARR in 5\u20136 years. Two concerns: European-only TAM, and whether this is really a $1B+ outcome versus a $150\u2013250M strategic exit to someone like Montel, ICE, or Trayport. Make the case for outcome size.\"\n\n**Presenter:** \"European wholesale gas and power is a $1.2T notional market; the analytics and execution-support software wedge I'd defend is roughly $2.8B of software spend today, growing with renewables volatility. Our 5-year plan is $65M ARR from Europe alone at ~15% of tier-1 and tier-2 utilities plus large industrials and trading houses \u2014 that's 140 logos at a blended $460K ACV. The $100M ARR path requires either (a) North American ISOs, which we've scoped but are not funding in this round, or (b) expansion into adjacent asset classes \u2014 carbon, LNG, ancillary services \u2014 where the same model architecture applies and where two of our current customers have already asked for carbon. On exit size: you're right that the floor is a strategic acquisition in the $200\u2013400M range; that's the downside case, not the base. The $1B+ case requires us to become the execution layer, not just signals \u2014 and that is a product decision in year 3 that I won't pretend is de-risked today. For fund fit: we match your vertical-AI thesis, we don't match if you need a US-first story in year 1.\"\n\n---\n\n### Turn 5 \u2014 Skeptic (follow-up, market/competition)\n\n**Skeptic:** \"38% customer concentration and one renewal is a thin empirical base. What happens to the round and the plan if that top customer churns or negotiates down at renewal in the next 9 months?\"\n\n**Presenter:** \"Top customer is RWE, contract is 24 months with 14 months remaining, so churn inside 9 months requires a termination-for-cause event \u2014 possible but not a renewal-cycle risk in that window. Renegotiation-down at their mid-term true-up is the realistic risk; our mitigation is that we're now deployed across three of their desks (gas LDZ, German power intraday, and as of last month French power) and the expansion itself creates switching cost. If they cut us 30% at true-up, ARR drops to ~$2.1M and the $12M plan's 18-month runway becomes 16 months \u2014 still past the next fundraise milestone of $8M ARR. If they terminate, runway is 14 months and we'd need a bridge; I'd tell you that directly rather than pretend the plan survives unchanged. The concentration resolves structurally only by closing customers 5 and 6, both of which are in late-stage procurement \u2014 Fortum at $550K expected close May, and a Benelux TSO-adjacent trader at ~$700K expected July. If either slips past September, that is the signal to worry.\"\n\n---\n\n## Scored Report\n\n| Dimension | Score (1\u201310) | Rationale |\n|---|---|---|\n| Conviction clarity | 9 | Every answer leads with a number or a structural claim, then qualifies it. Thesis is articulated without hedging language; downside cases are stated in the same register as upside. |\n| Risk acknowledgment | 9 | Surfaced three material risks unprompted in the opening (Montel distribution, REMIT II/AI Act, 38% concentration). Voluntarily named the productization-miss scenario, the n=1 NRR caveat, and the \"becomes a services firm\" failure mode. |\n| Data density | 9 | Specific ACVs, CAC ($180K), payback (9 months), gross margin bridge (60\u219272%), bps lift (11 and 17), training set size (2.1B ticks), TAM ($2.8B wedge), concentration math (38%, runway 18\u219216\u219214 months). Only soft spot: NRR credibly flagged as n=1. |\n| Thesis alignment | 7 | Vertical AI with enterprise data moat \u2014 strong fit. But European-only near-term and the $1B+ outcome case depends on a year-3 product bet (signals \u2192 execution layer) that the presenter honestly admits is not de-risked. Fund-fit answer is candid rather than tailored. |\n| Poise under pressure | 9 | Handled follow-up concentration question by giving the exact mechanics (RWE, 14 months remaining, true-up math, named pipeline covers, explicit \"signal to worry\" date). No defensiveness, no retreat into narrative. Flagged what they won't defend (NRR) as clearly as what they will. |\n\n**Overall: 43/50**\n\n### Summary (2 sentences)\n\nA high-signal presentation: the founder led with specific numbers, pre-empted three of the committee's four likely objections, and handled follow-ups with the exact operational detail (customer names, bps lift, runway math, pipeline close dates) that makes diligence efficient rather than adversarial. The case breaks cleanly into a strong near-term European vertical-AI story and a genuinely uncertain $1B+ outcome bet that depends on a year-3 platform expansion the founder refused to oversell.\n\n### Improvement notes (3)\n\n1. **Strengthen the NRR story before the next IC.** One renewal at 169% net is a great anecdote but a weak data point; commit to showing 3\u20134 renewal cohorts at the next meeting and pre-register the expansion metric you'll be measured on (logos expanded, seats expanded, or desk count) so the committee doesn't choose the worst-looking framing for you.\n2. **Tighten the $1B+ outcome narrative.** The honest \"signals-to-execution-layer\" pivot is credible but currently lands as a hope rather than a plan. Bring a one-page product/regulatory sequencing map for year 3 \u2014 what has to be true in capability, compliance, and customer permission \u2014 so the fund-fit answer has a spine rather than a qualifier.\n3. **Pre-build the concentration-mitigation dashboard.** Fortum (May) and the Benelux trader (July) are load-bearing; don't let the committee discover slippage in a future update. Offer a monthly pipeline-and-RWE-health note between now and close, with the specific triggers (\"if Fortum slips past September\u2026\") that you already articulated verbally \u2014 make the commitment structural, not conversational.\n"}], "grading": null}], "previous_feedback": {}, "previous_outputs": {}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

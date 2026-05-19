@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "alinia-ai-compliance-preseed",
+  "prompt": "Practice IC for Alinia — AI compliance platform for EU AI Act Article 6 high-risk systems. Pre-seed, €2M round, founder ex-McKinsey digital. Initial target: BaFin-regulated tier-2 German banks. No paid customers yet, 2 LOIs. Simulate both the presenter (moderately-prepared, some fuzzy answers on unit economics) and the committee. 5 committee turns. Write the full transcript + scored report to outputs/session.md.",
+  "assertions": []
+}

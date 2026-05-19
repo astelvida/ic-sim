@@ -1,0 +1,6 @@
+{
+  "eval_id": 0,
+  "eval_name": "mindgard-ai-security-seed",
+  "prompt": "I want to run an IC sim. Deal: Mindgard. AI security — red-teaming for LLMs and agents. Seed stage, ~8 FTE, UK. Lead competitor is HiddenLayer. Working with 3 FTSE 100 customers in pilot, 1 paid. Play both me (a reasonably-prepared associate giving specific, numerate answers) and the committee. Run 5 full committee turns (so ~10 back-and-forths), then produce the final report. Write the complete transcript and final report as markdown to outputs/session.md.",
+  "assertions": []
+}

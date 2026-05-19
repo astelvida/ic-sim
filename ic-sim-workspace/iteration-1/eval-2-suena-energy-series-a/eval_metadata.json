@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "suena-energy-series-a",
+  "prompt": "Run ic-sim for Suena Energy. Series A pre-empt. $12M round. Energy trading AI for European gas/power wholesale markets. Ex-Vattenfall and ex-Trayport founding team of 3. ARR $2.4M, 4 paying tier-1 utility customers, 60% gross margin. Lead competitor is Montel. Simulate a strong presenter who gives specific numbers and names risks up front. 5 turns. Output transcript + report as markdown to outputs/session.md.",
+  "assertions": []
+}

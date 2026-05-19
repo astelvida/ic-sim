@@ -59,7 +59,7 @@ If you need to change who jumps in on a given keyword, edit the `domain` arrays 
 
 ### Brief & score JSON contracts
 
-`lib/prompts.ts` holds two system prompts (`BRIEF_SYSTEM`, `SCORE_SYSTEM`) that require the model to return **bare JSON** (no markdown fences, no prose). Both API routes (`/api/brief`, `/api/score`) defend against fences anyway by slicing from the first `{` to the last `}` (`extractJson` in `app/api/brief/route.ts`). Don't add prose to those prompts or you'll break the JSON.parse.
+`/api/brief/route.ts` and `/api/score/route.ts` each hold their own system prompt inline. Both prompts require the model to return **bare JSON** (no markdown fences, no prose), and both routes defend against fences anyway via a local `extractJson` helper that strips a fenced block if present and otherwise slices from the first `{` to the last `}`. Don't add prose to those prompts or you'll break the `JSON.parse`. If a third surface ever needs the same prompt, that's the signal to extract it back into a shared module — until then, keep it inline so the schema and the parser live next to each other.
 
 ### Notion integration
 

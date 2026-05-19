@@ -1,0 +1,26 @@
+{
+  "skill_name": "ic-sim",
+  "evals": [
+    {
+      "id": 0,
+      "name": "mindgard-ai-security-seed",
+      "prompt": "I want to run an IC sim. Deal: Mindgard. AI security — red-teaming for LLMs and agents. Seed stage, ~8 FTE, UK. Lead competitor is HiddenLayer. Working with 3 FTSE 100 customers in pilot, 1 paid. Play both me (a reasonably-prepared associate giving specific, numerate answers) and the committee. Run 5 full committee turns (so ~10 back-and-forths), then produce the final report. Write the complete transcript and final report as markdown to outputs/session.md.",
+      "expected_output": "A markdown file containing: (1) a deal brief, (2) ~10 alternating turns with the 4 committee members named, sentiment tags visible, (3) a final report with 5 scores /10, a summary, 3 improvement notes, and a sentiment trajectory. Committee members must stay in-character and ask exactly one question each turn.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "alinia-ai-compliance-preseed",
+      "prompt": "Practice IC for Alinia — AI compliance platform for EU AI Act Article 6 high-risk systems. Pre-seed, €2M round, founder ex-McKinsey digital. Initial target: BaFin-regulated tier-2 German banks. No paid customers yet, 2 LOIs. Simulate both the presenter (moderately-prepared, some fuzzy answers on unit economics) and the committee. 5 committee turns. Write the full transcript + scored report to outputs/session.md.",
+      "expected_output": "Same structure as eval 0. The Regulatory Hawk should be especially active given the deal. The scoring should reflect that unit economics answers were weak (Operator score lower).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "suena-energy-series-a",
+      "prompt": "Run ic-sim for Suena Energy. Series A pre-empt. $12M round. Energy trading AI for European gas/power wholesale markets. Ex-Vattenfall and ex-Trayport founding team of 3. ARR $2.4M, 4 paying tier-1 utility customers, 60% gross margin. Lead competitor is Montel. Simulate a strong presenter who gives specific numbers and names risks up front. 5 turns. Output transcript + report as markdown to outputs/session.md.",
+      "expected_output": "Same structure. A strong presenter should score higher (7+) on conviction, data density, risk ack. The Portfolio Lens should ask about fund overlap and reserve strategy given it's a Series A pre-empt.",
+      "files": []
+    }
+  ]
+}
