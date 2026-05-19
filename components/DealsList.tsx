@@ -214,8 +214,8 @@ export function DealsList() {
                             </td>
                             <Td>{d.sector || "—"}</Td>
                             <Td>{d.stage || "—"}</Td>
-                            <Td className="text-right mono">
-                              {d.ssiScore === null ? "—" : Math.round(d.ssiScore)}
+                            <Td className="text-right mono w-28">
+                              {d.ssiScore === null ? "—" : <SsiBar value={d.ssiScore} />}
                             </Td>
                             <Td>
                               <div>{d.signalTier || "—"}</div>
@@ -338,6 +338,21 @@ function Th({ children, className = "" }: { children: React.ReactNode; className
 
 function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <td className={`py-3 pr-4 align-top text-bone-dim ${className}`}>{children}</td>;
+}
+
+function SsiBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span className="tabular-nums">{Math.round(value)}</span>
+      <div className="w-12 h-[3px] bg-bone/[0.08] relative">
+        <div
+          className="absolute inset-y-0 left-0 bg-bone"
+          style={{ width: `${pct}%`, opacity: 0.4 + (pct / 100) * 0.6 }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function truncate(s: string, n: number): string {
