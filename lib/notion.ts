@@ -60,10 +60,12 @@ export async function listDeals(): Promise<DealListItem[]> {
       data_source_id,
       page_size: 40,
       filter: {
-        property: "Status",
-        select: { does_not_equal: "❌ Pass" },
+        and: [
+          { property: "Status", select: { does_not_equal: "❌ Pass" } },
+          { property: "Status", select: { does_not_equal: "🗄️ Archived" } },
+        ],
       },
-      sorts: [{ property: "Last Edited At", direction: "descending" }],
+      sorts: [{ property: "SSI Score", direction: "descending" }],
     });
 
   try {

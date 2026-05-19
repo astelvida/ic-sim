@@ -1,4 +1,5 @@
 import { DealPicker } from "@/components/DealPicker";
+import { DealsList } from "@/components/DealsList";
 
 export default function Home() {
   return (
@@ -25,7 +26,43 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex-1 flex items-start pt-20">
+      <section className="pt-16 pb-4">
+        <div className="mono text-[10px] tracking-[0.3em] uppercase text-neutral mb-6">
+          How it works
+        </div>
+        <ol className="space-y-3 max-w-3xl">
+          <li className="flex gap-6">
+            <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral pt-1 w-24 shrink-0">
+              01 · Brief
+            </span>
+            <span className="text-[14px] leading-relaxed text-bone-dim">
+              Run <code className="text-bone">/ic-brief</code> in Claude Code on a Notion deal page or pasted text. It returns a one-page JSON brief.
+            </span>
+          </li>
+          <li className="flex gap-6">
+            <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral pt-1 w-24 shrink-0">
+              02 · Paste
+            </span>
+            <span className="text-[14px] leading-relaxed text-bone-dim">
+              Drop the JSON below. You&rsquo;ll walk into a live room with four AI partners staring back.
+            </span>
+          </li>
+          <li className="flex gap-6">
+            <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral pt-1 w-24 shrink-0">
+              03 · Defend
+            </span>
+            <span className="text-[14px] leading-relaxed text-bone-dim">
+              Ten turns. Sentiment tracked per member. A scored rubric and PDF when the gavel drops.
+            </span>
+          </li>
+        </ol>
+      </section>
+
+      <div className="pt-8">
+        <DealsList />
+      </div>
+
+      <div className="flex-1 flex items-start pt-16">
         <DealPicker />
       </div>
 

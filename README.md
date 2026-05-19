@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IC-Sim
 
-## Getting Started
+A rehearsal tool for VC analysts and principals. Pick a deal, defend it for ten turns against four AI investment-committee partners — Skeptic, Operator, Regulatory Hawk, Portfolio Lens — and walk out with a scored rubric.
 
-First, run the development server:
+Built for reps before the real room. The committee has no sympathy by design.
+
+## Two surfaces
+
+The product ships as two parallel forms that share the same four personas:
+
+- **Next.js web app** (`app/`, `components/`, `lib/`) — the deployable browser surface. Runs the live "room" and the post-room scored report (with PDF export).
+- **Claude Code skills** (`.claude/skills/ic-{sim,brief,deals,turn,score}/`) — the terminal-native surface. Runs entirely inside the user's Claude Code session, no Anthropic API key needed.
+
+Today the skills are also the **upstream producer** of the brief artifact: you generate the brief in Claude Code with `/ic-brief`, then paste its JSON into the web app to start a room. Persona definitions must stay in sync across both surfaces — see `CLAUDE.md` § "When editing personas".
+
+## Run it locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required env (`.env.local`):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `ANTHROPIC_API_KEY` — for `/api/turn` (committee streaming) and `/api/score` (post-room rubric).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See `CLAUDE.md` for the full env list and what each variable powers.
 
-## Learn More
+## The user flow
 
-To learn more about Next.js, take a look at the following resources:
+1. **Brief** — Run `/ic-brief` in Claude Code on a Notion deal page or pasted text. Optionally run `/ic-deals` first to browse the Dealflow pipeline and pick a target.
+2. **Paste** — Drop the brief JSON into the landing page at `http://localhost:3000`.
+3. **Defend** — Ten turns. Four AI partners cycle in based on what you say. Each turn streams in real time.
+4. **Score** — A 5-dimension rubric, a 2-sentence partner-voice summary, three concrete improvement notes. Export to PDF if you want to keep it.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+You can also skip the web app and run the whole thing in Claude Code with `/ic-sim` — same personas, same scoring, terminal-only.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Where to look first
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `CLAUDE.md` — architecture, env vars, the streaming contract, the turn router, the JSON contracts. Read this before changing anything non-cosmetic.
+- `lib/committee.ts` — the four personas as the web app sees them (`SHARED_RULES`, per-member `systemPrompt`, keyword `domain` arrays).
+- `.claude/skills/ic-sim/SKILL.md` — the orchestrator for the skill-side simulation; source of truth for session shape (10 turns, opening-statement framing, sentiment dashboard).
+- `lib/types.ts` — `Brief`, `Turn`, `Rubric`, `MemberId`, `Sentiment`. The contracts shared by every surface.
