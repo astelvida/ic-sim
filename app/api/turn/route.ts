@@ -18,17 +18,32 @@ export async function POST(req: Request) {
     return new Response("unknown member", { status: 400 });
   }
 
-  // Build the conversation: map presenter turns to "user", member turns to "assistant"
-  // (one shared assistant voice is fine — each member call has its own system prompt).
+  // Build the conversation. Three turn types map differently:
+  //   presenter turn          -> role: "user"  (the human in the room)
+  //   THIS member's prior turn -> role: "assistant" (this member's own prior speech)
+  //   ANOTHER member's turn   -> role: "user"  framed as third-party context.
+  //
+  // The previous implementation assigned all member turns to role: "assistant" with a
+  // `[ArchetypeName]:` prefix. The model treated those as its own prior outputs and
+  // copied the prefix format, producing impersonation bugs (Mira opening with
+  // "[The Skeptic]:" and continuing Pat's line of questioning). Framing other members'
+  // turns as user-supplied context eliminates the template the model was mimicking.
   const messages = turns
     .filter((t) => t.text.trim().length > 0)
-    .map((t) => ({
-      role: t.role === "presenter" ? ("user" as const) : ("assistant" as const),
-      content:
-        t.role === "member" && t.memberId && t.memberId !== memberId
-          ? `[${COMMITTEE_BY_ID[t.memberId]?.archetype ?? "Committee"}]: ${t.text}`
-          : t.text,
-    }));
+    .map((t) => {
+      if (t.role === "presenter") {
+        return { role: "user" as const, content: t.text };
+      }
+      if (t.memberId === memberId) {
+        return { role: "assistant" as const, content: t.text };
+      }
+      const archetype =
+        (t.memberId && COMMITTEE_BY_ID[t.memberId]?.archetype) || "Another partner";
+      return {
+        role: "user" as const,
+        content: `[Earlier in the room, ${archetype} asked the presenter:]\n${t.text}`,
+      };
+    });
 
   // If the conversation is empty or starts with assistant, seed with a kickoff user turn.
   if (messages.length === 0 || messages[0].role !== "user") {
