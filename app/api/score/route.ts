@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
 import { COMMITTEE_BY_ID } from "@/lib/committee";
+import { extractJson } from "@/lib/json-extract";
+import { withRetry } from "@/lib/retry";
 import type { Brief, Rubric, Turn } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -30,15 +32,6 @@ function renderTranscript(turns: Turn[]): string {
     .join("\n\n");
 }
 
-function extractJson(s: string): string {
-  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenced) return fenced[1].trim();
-  const first = s.indexOf("{");
-  const last = s.lastIndexOf("}");
-  if (first !== -1 && last !== -1) return s.slice(first, last + 1);
-  return s;
-}
-
 export async function POST(req: Request) {
   try {
     const { brief, turns } = (await req.json()) as { brief: Brief; turns: Turn[] };
@@ -46,12 +39,20 @@ export async function POST(req: Request) {
     const user = `DEAL BRIEF:\n${JSON.stringify(brief, null, 2)}\n\nTRANSCRIPT:\n${renderTranscript(turns)}\n\nScore the presenter per the rubric.`;
 
     const client = getAnthropic();
-    const res = await client.messages.create({
-      model: MODEL_ID,
-      max_tokens: 1400,
-      system: SCORE_SYSTEM,
-      messages: [{ role: "user", content: user }],
-    });
+    // No prompt caching here: SCORE_SYSTEM is ~300 tokens, well below Sonnet 4.6's
+    // 1,024-token cacheability floor. Score also only runs once per session.
+    const res = await withRetry(() =>
+      client.messages.create({
+        model: MODEL_ID,
+        // 1800 (was 1400) so a rubric at the upper bound of all word counts +
+        // 3 detailed improvement notes + a 2-sentence summary clears max_tokens
+        // headroom. Truncation at the JSON closing brace was the most common
+        // shape of /api/score 500s before this bump.
+        max_tokens: 1800,
+        system: SCORE_SYSTEM,
+        messages: [{ role: "user", content: user }],
+      }),
+    );
 
     const text = res.content
       .filter((b) => b.type === "text")
@@ -59,7 +60,22 @@ export async function POST(req: Request) {
       .join("")
       .trim();
 
-    const rubric = JSON.parse(extractJson(text)) as Rubric;
+    let rubric: Rubric;
+    try {
+      rubric = JSON.parse(extractJson(text)) as Rubric;
+    } catch (parseErr) {
+      // Mirror /api/brief's diagnostic shape. stop_reason="max_tokens" is the
+      // smoking gun for truncation; "end_turn" with a parse failure means the
+      // model emitted prose around the JSON (rare, but extractJson handles it).
+      console.error(
+        `[/api/score] JSON.parse failed. text.length=${text.length}, ` +
+          `stop_reason=${res.stop_reason}, tail=${JSON.stringify(text.slice(-200))}`,
+      );
+      throw new Error(
+        `score generation returned malformed JSON (${parseErr instanceof Error ? parseErr.message : "unknown"}). ` +
+          `stop_reason=${res.stop_reason}, output length=${text.length} chars.`,
+      );
+    }
     return NextResponse.json({ rubric });
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown error";

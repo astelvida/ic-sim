@@ -1,10 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "@/lib/session-context";
 import type { Brief, DealListItem } from "@/lib/types";
+
+// Rotating progress hints shown next to "drafting brief…". The /api/brief route
+// runs web_search up to 6x server-side — user-visible wait is 20-40s. These hints
+// give the user a sense of forward motion without lying about real progress.
+const BRIEF_HINTS = [
+  "drafting brief…",
+  "checking competitors…",
+  "verifying TAM math…",
+  "scanning regulators…",
+  "reading founder backgrounds…",
+  "pulling comparables…",
+  "stress-testing risks…",
+];
 
 export function DealsList() {
   const router = useRouter();
@@ -14,13 +27,21 @@ export function DealsList() {
   const [deals, setDeals] = useState<DealListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [simCopiedId, setSimCopiedId] = useState<string | null>(null);
+  const [enteringId, setEnteringId] = useState<string | null>(null);
+  const [enterError, setEnterError] = useState<string | null>(null);
 
   const [stages, setStages] = useState<Set<string>>(new Set());
   const [sectors, setSectors] = useState<Set<string>>(new Set());
   const [priorities, setPriorities] = useState<Set<string>>(new Set());
+
+  const [hintIdx, setHintIdx] = useState(0);
+  useEffect(() => {
+    if (!enteringId) return;
+    setHintIdx(0);
+    const id = setInterval(() => setHintIdx((i) => (i + 1) % BRIEF_HINTS.length), 4000);
+    return () => clearInterval(id);
+  }, [enteringId]);
 
   function togglePanel() {
     const next = !open;
@@ -61,9 +82,9 @@ export function DealsList() {
     setter(next);
   }
 
-  async function generateBrief(d: DealListItem) {
-    setGeneratingId(d.id);
-    setGenerateError(null);
+  async function enterRoom(d: DealListItem) {
+    setEnteringId(d.id);
+    setEnterError(null);
     try {
       const r = await fetch("/api/brief", {
         method: "POST",
@@ -76,20 +97,20 @@ export function DealsList() {
       setBrief(brief);
       router.push("/room");
     } catch (e) {
-      setGenerateError(
+      setEnterError(
         `${d.company || d.id}: ${e instanceof Error ? e.message : "brief generation failed"}`,
       );
-      setGeneratingId(null);
+      setEnteringId(null);
     }
   }
 
-  async function copyPrompt(d: DealListItem) {
+  async function copySimPrompt(d: DealListItem) {
     const tail = [d.company, d.sector, d.stage].filter(Boolean).join(" · ");
-    const prompt = `/ic-brief ${d.id}${tail ? `  # ${tail}` : ""}`;
+    const prompt = `/ic-sim ${d.id}${tail ? `  # ${tail}` : ""}`;
     try {
       await navigator.clipboard.writeText(prompt);
-      setCopiedId(d.id);
-      setTimeout(() => setCopiedId((c) => (c === d.id ? null : c)), 1600);
+      setSimCopiedId(d.id);
+      setTimeout(() => setSimCopiedId((c) => (c === d.id ? null : c)), 1600);
     } catch {
       /* secure-context / older browsers — clipboard unavailable */
     }
@@ -225,23 +246,24 @@ export function DealsList() {
                             </Td>
                             <Td>{d.status || "—"}</Td>
                             <Td className="text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-3">
+                              <div className="flex items-center justify-end gap-4">
                                 <button
                                   type="button"
-                                  onClick={() => copyPrompt(d)}
-                                  className="mono text-[10px] tracking-[0.14em] uppercase text-bone-dim hover:text-bone underline-offset-4 hover:underline"
-                                  title="Copy a /ic-brief prompt to paste into Claude Code"
+                                  onClick={() => copySimPrompt(d)}
+                                  disabled={enteringId !== null}
+                                  className="mono text-[10px] tracking-[0.14em] uppercase text-neutral hover:text-bone-dim underline-offset-4 hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
+                                  title="Copy a /ic-sim prompt to run the simulation in your Claude Code terminal session instead"
                                 >
-                                  {copiedId === d.id ? "✓ copied" : "copy prompt"}
+                                  {simCopiedId === d.id ? "✓ copied" : "/ic-sim"}
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => generateBrief(d)}
-                                  disabled={generatingId !== null}
-                                  className="mono text-[10px] tracking-[0.14em] uppercase text-bone hover:text-amber underline-offset-4 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                                  title="Generate the brief in the browser and enter the committee room"
+                                  onClick={() => enterRoom(d)}
+                                  disabled={enteringId !== null}
+                                  className="mono text-[10px] tracking-[0.18em] uppercase text-bone hover:text-amber underline-offset-4 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                                  title="Draft the brief from Notion and walk straight into the committee room"
                                 >
-                                  {generatingId === d.id ? "generating…" : "generate →"}
+                                  {enteringId === d.id ? BRIEF_HINTS[hintIdx] : "enter the room →"}
                                 </button>
                               </div>
                             </Td>
@@ -258,19 +280,19 @@ export function DealsList() {
                     </table>
                   </div>
 
-                  {generateError && (
+                  {enterError && (
                     <div className="mt-4 mono text-[11px] uppercase tracking-[0.14em] text-oxblood">
-                      error: {generateError}
+                      error: {enterError}
                     </div>
                   )}
 
                   <div className="mt-6 flex items-baseline justify-between gap-6">
                     <div className="text-[12px] text-bone-dim leading-relaxed max-w-2xl">
-                      <span className="mono">generate →</span> drafts the brief here and walks
-                      you straight into the room.{" "}
-                      <span className="mono">copy prompt</span> hands you a{" "}
-                      <code className="text-bone">/ic-brief</code> string for Claude Code if you
-                      want to use the skill flow instead.
+                      <span className="mono text-bone">enter the room →</span> drafts a one-page
+                      brief from the Notion page and walks you straight into the committee. If
+                      you&rsquo;d rather drive the whole simulation from your terminal, the small{" "}
+                      <span className="mono">/ic-sim</span> link copies a prompt for your Claude
+                      Code session.
                     </div>
                     <div className="mono text-[10px] tracking-[0.2em] uppercase text-neutral whitespace-nowrap">
                       {anyFilter ? `${shown} of ${total}` : `${total} deals`}

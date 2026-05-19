@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Nested build artifacts inside git worktrees were producing ~500 spurious
+    // lint errors. The patterns above only match repo-root .next; this catches
+    // any .next anywhere in the tree (worktrees, fixtures, etc.).
+    "**/.next/**",
+    ".claude/worktrees/**",
   ]),
 ]);
 

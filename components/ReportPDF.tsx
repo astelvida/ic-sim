@@ -1,7 +1,8 @@
 "use client";
 
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from "@react-pdf/renderer";
-import { COMMITTEE_BY_ID } from "@/lib/committee";
+import { COMMITTEE, COMMITTEE_BY_ID } from "@/lib/committee";
+import { sentimentTrajectory } from "@/lib/turn-router";
 import type { Brief, Rubric, Turn } from "@/lib/types";
 
 const styles = StyleSheet.create({
@@ -26,6 +27,12 @@ const styles = StyleSheet.create({
   turn: { marginBottom: 10 },
   turnLabel: { fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 },
   turnText: { fontSize: 10, lineHeight: 1.4 },
+  trajRow: { flexDirection: "row", paddingVertical: 4 },
+  trajLabel: { fontSize: 9, width: 110, color: "#555", textTransform: "uppercase", letterSpacing: 0.8 },
+  trajValue: { fontSize: 10, flex: 1, color: "#1a1a1a" },
+  sourceRow: { marginBottom: 6, lineHeight: 1.4 },
+  sourceTitle: { fontSize: 10, color: "#1a1a1a" },
+  sourceUrl: { fontSize: 8, color: "#666" },
 });
 
 function Report({ brief, rubric, turns }: { brief: Brief; rubric: Rubric; turns: Turn[] }) {
@@ -74,7 +81,41 @@ function Report({ brief, rubric, turns }: { brief: Brief; rubric: Rubric; turns:
             </Text>
           ))}
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Sentiment Trajectory</Text>
+          {COMMITTEE.map((m) => {
+            const traj = sentimentTrajectory(m.id, turns);
+            return (
+              <View key={m.id} style={styles.trajRow}>
+                <Text style={styles.trajLabel}>{m.archetype}</Text>
+                <Text style={styles.trajValue}>
+                  {traj.length === 0 ? "— did not speak" : traj.join(" → ")}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
       </Page>
+
+      {brief.sources && brief.sources.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.sub}>IC · SIM — Sources & Citations</Text>
+          <Text style={styles.label}>
+            Web-search citations gathered during brief generation
+          </Text>
+          <View style={{ marginTop: 12 }}>
+            {brief.sources.map((s, i) => (
+              <View key={i} style={styles.sourceRow}>
+                <Text style={styles.sourceTitle}>
+                  {i + 1}. {s.title}
+                </Text>
+                <Text style={styles.sourceUrl}>{s.url}</Text>
+              </View>
+            ))}
+          </View>
+        </Page>
+      )}
 
       <Page size="A4" style={styles.page}>
         <Text style={styles.label}>Transcript</Text>

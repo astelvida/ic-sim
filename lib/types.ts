@@ -11,7 +11,33 @@ export interface CommitteeMember {
   systemPrompt: (brief: Brief) => string;
 }
 
+export interface Source {
+  title: string;
+  url: string;
+  accessedAt?: string;
+}
+
+export interface Competitor {
+  name: string;
+  positioning: string;
+  threat: string;
+}
+
+export interface MarketSizing {
+  tam?: string;
+  sam?: string;
+  som?: string;
+  methodology?: string;
+}
+
+export interface Comparable {
+  company: string;
+  multiple?: string;
+  note?: string;
+}
+
 export interface Brief {
+  // Existing core fields
   company: string;
   oneLiner: string;
   sector: string;
@@ -27,6 +53,18 @@ export interface Brief {
   recentSignal: string;
   chips: string[];
   raw?: string;
+
+  // Extended VC-memo fields (all optional — older briefs still load)
+  product?: string;                  // What the product technically does
+  businessModel?: string;            // Pricing, GTM motion, ACVs, sales cycle
+  competitors?: Competitor[];        // Named, structured competitor view
+  marketSizing?: MarketSizing;       // TAM/SAM/SOM with methodology
+  regulatoryContext?: string;        // Regulations that create or threaten the moat
+  capTable?: string;                 // Cap-table observations: dilution, founder ownership
+  comparables?: Comparable[];        // Public/private comparables with multiples
+  unitEconomics?: string;            // CAC, payback, gross margin, net retention
+  keyQuestionsForIC?: string[];      // What the IC should pressure-test
+  sources?: Source[];                // Citations gathered during generation
 }
 
 export interface Turn {
@@ -54,6 +92,16 @@ export interface RubricScore {
   justification: string;
 }
 
+export interface LookupFact {
+  text: string;
+  source?: Source;
+}
+
+export interface LookupResult {
+  tip: string;
+  facts: LookupFact[];
+}
+
 export interface DealListItem {
   id: string;
   company: string;
@@ -64,4 +112,26 @@ export interface DealListItem {
   signalTier: string;
   priority: string;
   status: string;
+}
+
+// Compact payload for /r/[token]. The token IS the data — no KV, no DB. We
+// keep this tight because the whole thing has to base64url-encode into a URL
+// that fits comfortably in tweets, LinkedIn posts, and iMessage. ~500-800 bytes
+// JSON → ~700-1100 chars base64url. Justifications and the full transcript are
+// intentionally dropped; only the score badge + summary + improvement notes
+// survive.
+export interface SharePayload {
+  company: string;
+  sector: string;
+  overall: number;
+  scores: {
+    convictionClarity: number;
+    riskAck: number;
+    dataDensity: number;
+    thesisAlignment: number;
+    poise: number;
+  };
+  improvementNotes: string[];
+  summary: string;
+  dateISO: string;
 }

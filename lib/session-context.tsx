@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useReducer, useCallback } from "react";
+import { createContext, useContext, useEffect, useReducer, useCallback } from "react";
 import type { Brief, MemberId, Rubric, Sentiment, Turn } from "./types";
 
 interface SessionState {
@@ -10,6 +10,10 @@ interface SessionState {
   rubric: Rubric | null;
   startedAt: number | null;
   endedAt: number | null;
+  // `hydrated` is false during the initial SSR + first client render. It flips to
+  // true once the mount effect runs and reads sessionStorage (client-only). Kept
+  // inside SessionState so the hydrate transition is a single atomic dispatch.
+  hydrated: boolean;
 }
 
 type Action =
@@ -19,7 +23,8 @@ type Action =
   | { type: "update-last-member-turn"; text: string; sentiment?: Sentiment }
   | { type: "set-rubric"; rubric: Rubric }
   | { type: "end" }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "hydrate"; state: SessionState };
 
 const initial: SessionState = {
   brief: null,
@@ -28,12 +33,39 @@ const initial: SessionState = {
   rubric: null,
   startedAt: null,
   endedAt: null,
+  hydrated: false,
 };
+
+// sessionStorage key. sessionStorage (not localStorage) is deliberate: tab-scoped,
+// clears on tab close — appropriate for sensitive pipeline deal data and prevents
+// cross-tab pollution.
+const STORAGE_KEY = "ic-sim:session-v1";
+
+function loadFromStorage(): SessionState {
+  if (typeof window === "undefined") return initial;
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...initial, hydrated: true };
+    const parsed = JSON.parse(raw) as Partial<SessionState>;
+    // Validate the minimum shape — if the schema drifts across releases, fall back.
+    if (parsed && typeof parsed === "object" && "brief" in parsed && "turns" in parsed) {
+      // `hydrated: true` flips on regardless of whether storage had data — what we're
+      // marking is that we've consulted it, not that it was populated.
+      return { ...initial, ...parsed, hydrated: true };
+    }
+  } catch {
+    /* corrupt — fall through to fresh state */
+  }
+  return { ...initial, hydrated: true };
+}
 
 function reducer(state: SessionState, action: Action): SessionState {
   switch (action.type) {
     case "set-brief":
-      return { ...initial, brief: action.brief };
+      // Reset session state but preserve `hydrated` — by the time anyone calls
+      // setBrief() we're past the initial hydration window. Resetting it would
+      // re-trigger the "Restoring session…" placeholder on /room.
+      return { ...initial, hydrated: state.hydrated, brief: action.brief };
     case "start":
       return { ...state, startedAt: Date.now() };
     case "add-turn":
@@ -69,7 +101,9 @@ function reducer(state: SessionState, action: Action): SessionState {
     case "end":
       return { ...state, endedAt: Date.now() };
     case "reset":
-      return initial;
+      return { ...initial, hydrated: state.hydrated };
+    case "hydrate":
+      return action.state;
   }
 }
 
@@ -86,7 +120,36 @@ interface SessionContextValue extends SessionState {
 const Ctx = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
+  // IMPORTANT: do NOT lazy-init from sessionStorage. Lazy init runs both during
+  // SSR (window undefined → returns `initial`) and on client hydration (window
+  // available → returns restored state). The divergence causes a hydration
+  // mismatch that React 19 logs and re-renders to recover from.
+  // Instead, always start from `initial`, then hydrate inside useEffect (client-only).
   const [state, dispatch] = useReducer(reducer, initial);
+
+  // One-shot hydration on mount. Single dispatch flips `state.hydrated` atomically
+  // (loadFromStorage always returns hydrated:true on both populated and empty paths),
+  // so no second setState is needed inside the effect — which also avoids React's
+  // cascading-render warning for setState-in-effect.
+  useEffect(() => {
+    dispatch({ type: "hydrate", state: loadFromStorage() });
+  }, []);
+
+  // Persist on every state change. Skip the pre-hydration phase to avoid clobbering
+  // a previously-stored session before we've consulted it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!state.hydrated) return;
+    try {
+      if (state.brief === null && state.turns.length === 0 && state.rubric === null) {
+        window.sessionStorage.removeItem(STORAGE_KEY);
+      } else {
+        window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+    } catch {
+      /* quota / disabled storage — fail open, session is best-effort */
+    }
+  }, [state]);
 
   const setBrief = useCallback((brief: Brief) => dispatch({ type: "set-brief", brief }), []);
   const start = useCallback(() => dispatch({ type: "start" }), []);
@@ -102,7 +165,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ ...state, setBrief, start, addTurn, updateLastMemberTurn, setRubric, end, reset }}
+      value={{
+        ...state,
+        setBrief,
+        start,
+        addTurn,
+        updateLastMemberTurn,
+        setRubric,
+        end,
+        reset,
+      }}
     >
       {children}
     </Ctx.Provider>

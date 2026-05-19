@@ -3,7 +3,65 @@ import type { Brief, CommitteeMember } from "./types";
 const SHARED_RULES = `\nOUTPUT RULES (strict):\n- Respond in 2 to 4 sentences, max 90 words. No preamble, no "Great question,", no apologies.\n- Ask exactly ONE pointed question at the end (question mark required). Never two questions.\n- You are in a live investment committee. You know the brief. Do not recap it.\n- Do not break character. Do not mention that you are an AI. Do not use emoji.\n- Speak only in your own voice. NEVER begin your reply with a bracketed archetype tag like "[The Skeptic]:", "[Operator]:", "[The Regulatory Hawk]:", or "[The Portfolio Lens]:". Those tags only ever appear in the conversation history to label what OTHER partners asked the presenter — they are context for you, not a format you should produce. Your reply must start with your own question or statement, full stop.\n- Stay in your own domain. Do not continue another partner's line of questioning; pivot to your own concerns (your archetype's domain is described in the system prompt above).\n- After your message, on its own final line, output EXACTLY one sentiment tag in this form:\n  [sentiment: positive] | [sentiment: neutral] | [sentiment: skeptical] | [sentiment: hostile]\n  Pick the label that reflects how you are feeling about the presenter's last answer.\n- Never wrap your reply in quotes or markdown code blocks.\n`;
 
 function briefContext(brief: Brief): string {
-  return `\nDEAL UNDER REVIEW:\nCompany: ${brief.company}\nOne-liner: ${brief.oneLiner}\nSector: ${brief.sector} | Stage: ${brief.stage}\nThesis fit: ${brief.thesisFit}\nSSI: ${brief.ssiScore ?? "—"}/100 | Regulatory embeddedness: ${brief.regEmbeddedness ?? "—"}/20\nMarket: ${brief.marketSize}\nCompetitive landscape: ${brief.competitiveLandscape}\nTeam: ${brief.team}\nTraction: ${brief.traction}\nTop risks (already surfaced): ${brief.topRisks.join("; ")}\nRecent signal: ${brief.recentSignal}\n`;
+  const lines: string[] = [
+    "",
+    "DEAL UNDER REVIEW:",
+    `Company: ${brief.company}`,
+    `One-liner: ${brief.oneLiner}`,
+    `Sector: ${brief.sector} | Stage: ${brief.stage}`,
+    `Thesis fit: ${brief.thesisFit}`,
+    `SSI: ${brief.ssiScore ?? "—"}/100 | Regulatory embeddedness: ${brief.regEmbeddedness ?? "—"}/20`,
+  ];
+
+  if (brief.product) lines.push(`Product: ${brief.product}`);
+  if (brief.businessModel) lines.push(`Business model: ${brief.businessModel}`);
+
+  lines.push(`Market: ${brief.marketSize}`);
+
+  if (brief.marketSizing) {
+    const { tam, sam, som, methodology } = brief.marketSizing;
+    const parts = [tam && `TAM ${tam}`, sam && `SAM ${sam}`, som && `SOM ${som}`].filter(Boolean);
+    if (parts.length) lines.push(`Market sizing: ${parts.join(" · ")}`);
+    if (methodology) lines.push(`Sizing methodology: ${methodology}`);
+  }
+
+  lines.push(`Competitive landscape: ${brief.competitiveLandscape}`);
+
+  if (brief.competitors?.length) {
+    lines.push("Named competitors:");
+    for (const c of brief.competitors) {
+      lines.push(`  - ${c.name}: ${c.positioning} — threat: ${c.threat}`);
+    }
+  }
+
+  if (brief.regulatoryContext) lines.push(`Regulatory context: ${brief.regulatoryContext}`);
+  if (brief.unitEconomics) lines.push(`Unit economics: ${brief.unitEconomics}`);
+  if (brief.capTable) lines.push(`Cap table: ${brief.capTable}`);
+
+  lines.push(`Team: ${brief.team}`);
+  lines.push(`Traction: ${brief.traction}`);
+
+  if (brief.comparables?.length) {
+    lines.push("Comparables:");
+    for (const c of brief.comparables) {
+      const tail = [c.multiple, c.note].filter(Boolean).join(" · ");
+      lines.push(`  - ${c.company}${tail ? ` (${tail})` : ""}`);
+    }
+  }
+
+  lines.push(`Top risks (already surfaced): ${brief.topRisks.join("; ")}`);
+  lines.push(`Recent signal: ${brief.recentSignal}`);
+
+  if (brief.keyQuestionsForIC?.length) {
+    // These were pre-identified as pressure-test areas during brief generation.
+    // The committee must PROBE them in their own voice — never recite or quote them.
+    lines.push("");
+    lines.push("Pre-identified pressure-test areas (for your own probing, not to recite):");
+    for (const q of brief.keyQuestionsForIC) lines.push(`  - ${q}`);
+  }
+
+  lines.push("");
+  return lines.join("\n");
 }
 
 export const COMMITTEE: CommitteeMember[] = [
