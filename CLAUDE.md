@@ -44,6 +44,12 @@ There is no test runner configured.
 - `NOTION_TOKEN` — required for `/api/deals` and `/api/brief`. The web app's "Browse your pipeline" panel (`components/DealsList.tsx`) calls `/api/deals` on expand, which uses `lib/notion.ts` to query the Dealflow database. The skill side (`ic-deals`, `ic-brief`) uses the user's Notion MCP server independently — same data, two integrations.
 - `NOTION_DEALFLOW_DS_ID` — optional override for the Dealflow data source ID hard-coded in `lib/notion.ts`. Kept in sync with the skill's hard-coded ID in `.claude/skills/ic-brief/SKILL.md` (`6abacccb-e24b-46c6-9f9f-6a2a3cfc9a0f`).
 
+## Deployment
+
+Deployed on Vercel as the project **`adversarial-ic-sim`**. Production URL: **https://adversarial-ic-sim-astelvidas-projects.vercel.app**. Deploy with `vercel deploy --prod` from the repo root (the project is linked — `.vercel/` exists locally).
+
+All three env vars above are configured in the Vercel project for both Preview and Production. **A deploy must follow any env-var change** — Vercel deployments are immutable snapshots that bake env in at build time, so adding or rotating a variable does not affect already-running deployments until the next `vercel deploy --prod`.
+
 ## Architecture — two surfaces, one product
 
 This repo ships the IC-Sim product in **two parallel forms** that share the same four committee personas:

@@ -4,6 +4,8 @@ A rehearsal tool for VC analysts and principals. Pick a deal, defend it against 
 
 Built for reps before the real room. The committee has no sympathy by design. If you dodge a question, the same partner re-asks it — naming what you ducked.
 
+**Live:** https://adversarial-ic-sim-astelvidas-projects.vercel.app
+
 ## Two surfaces
 
 The product ships as two parallel forms that share the same four personas:
