@@ -19,6 +19,15 @@ The user journey on the web side: (1) **pick** a deal from the Notion-backed pip
 
 The user journey on the skill side: (1) `/ic-deals` to browse the pipeline, (2) `/ic-brief` to draft the brief, (3) `/ic-sim` to run the full simulation (or `/ic-turn` to rehearse a single question), (4) `/ic-score` for the post-room rubric.
 
+## Reference docs (`docs/`)
+
+The canonical design intent lives in `docs/`. Read these before any non-cosmetic change — they explain *why*, where this file explains *how the code currently works*.
+
+- **`docs/ic-sim-prd-final.md`** — the full PRD. The source of truth for the 4 personas, the 5-dimension rubric and verdict bands, the turn-orchestrator algorithm (incl. evasion classification §12.2 and session-end logic §12.6), the Notion + enrichment architecture, and the Phase 1/2/3 scope split. When this file and the PRD disagree on design intent, the PRD wins; when they disagree on *what the code does today*, this file wins.
+- **`docs/ic-sim-build-prompt.md`** — the original day-by-day build spec and the intended file layout. Useful as a historical contract; the actual layout has drifted (e.g. `lib/agents/*` became `lib/committee.ts`, `/api/ic-turn` became `/api/turn`).
+- **`docs/ic-sim-design-doc-final.html`** — the visual atlas: wireframes, architecture diagrams, mobile breakpoints. Open in a browser.
+- **`docs/ROADMAP.md`** — the living plan: shipped status, tiered next steps (features), and a bug / tech-debt register. Update it as items ship.
+
 ## Commands
 
 Package manager is **pnpm** (see `pnpm-workspace.yaml`, `pnpm-lock.yaml`).

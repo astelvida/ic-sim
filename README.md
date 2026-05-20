@@ -39,9 +39,19 @@ See `CLAUDE.md` for the full env list and what each variable powers.
 
 Skip the web app and run the whole thing in Claude Code with `/ic-sim` — same personas, same scoring, terminal-only.
 
+## Design docs
+
+The canonical design intent lives in `docs/`:
+
+- **`docs/ic-sim-prd-final.md`** — the full PRD (4 personas, 5-dimension rubric, turn orchestrator, Notion + enrichment architecture, Phase 1/2/3 scope, success metrics).
+- **`docs/ic-sim-build-prompt.md`** — the original day-by-day build spec.
+- **`docs/ic-sim-design-doc-final.html`** — the visual atlas (wireframes, architecture diagrams, mobile breakpoints) — open in a browser.
+- **`docs/ROADMAP.md`** — the living plan: what's shipped, tiered next steps, and the bug / tech-debt register.
+
 ## Where to look first
 
 - `CLAUDE.md` — architecture, env vars, the streaming contract, the turn router (sync kickoff + async evasion path), the session-end policy, the share token format, the JSON contracts. Read this before changing anything non-cosmetic.
+- `docs/ROADMAP.md` — start here if you're picking up "what's next".
 - `lib/committee.ts` — the four personas as the web app sees them (`SHARED_RULES`, per-member `systemPrompt`, keyword `domain` arrays).
 - `lib/session-end.ts` — soft / hard cap constants. Import these, don't hard-code 8 / 12 / 15 / 16 / 18.
 - `lib/turn-router.ts` — `pickNextMemberSync` (kickoff) + `pickNextMember` (async, with evasion classifier).

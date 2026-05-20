@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IC Sim — Design Document</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --warm-white: #FAFAF7;
+    --ink: #1A1A1A;
+    --muted: #6B6B68;
+    --hairline: #E5E3DC;
+    --vermillion: #E63312;
+    --vermillion-soft: #FCEBE7;
+    --slate: #2A2D34;
+    --slate-soft: #F1F2F4;
+    --amber-soft: #FAEEDA;
+    --amber-text: #854F0B;
+    --green-soft: #EAF3DE;
+    --green-text: #3B6D11;
+    --info-soft: #E6F1FB;
+    --info-text: #185FA5;
+    --purple-soft: #EEEDFE;
+    --purple-text: #534AB7;
+    --serif: "Fraunces", Georgia, serif;
+    --sans: "DM Sans", -apple-system, sans-serif;
+    --mono: "JetBrains Mono", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--warm-white); color: var(--ink); line-height: 1.6; padding: 60px 20px; }
+  .container { max-width: 1040px; margin: 0 auto; }
+
+  .doc-header { border-bottom: 1px solid var(--hairline); padding-bottom: 32px; margin-bottom: 56px; }
+  .doc-eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--vermillion); margin-bottom: 16px; }
+  .doc-title { font-family: var(--serif); font-size: 56px; font-weight: 500; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 12px; }
+  .doc-subtitle { font-size: 18px; color: var(--muted); max-width: 720px; }
+  .doc-meta { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .doc-meta strong { color: var(--ink); font-weight: 500; }
+
+  .toc { background: white; border: 1px solid var(--hairline); border-radius: 10px; padding: 20px 28px; margin-bottom: 56px; }
+  .toc-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .toc-list { columns: 2; column-gap: 32px; font-size: 13px; }
+  .toc-list a { display: block; padding: 3px 0; color: var(--ink); text-decoration: none; }
+  .toc-list a:hover { color: var(--vermillion); }
+  .toc-num { font-family: var(--mono); color: var(--muted); margin-right: 8px; }
+
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+  .section-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  h2 { font-family: var(--serif); font-size: 36px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 20px; line-height: 1.15; }
+  h3 { font-size: 18px; font-weight: 500; margin-top: 32px; margin-bottom: 12px; }
+  p { margin-bottom: 16px; max-width: 760px; }
+  p.lead { font-size: 18px; line-height: 1.6; }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--slate-soft); padding: 2px 6px; border-radius: 4px; }
+
+  .visual { background: white; border: 1px solid var(--hairline); border-radius: 12px; padding: 28px; margin: 24px 0; }
+  .visual-caption { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 16px; text-align: center; }
+
+  svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .node-purple { fill: #EEEDFE; stroke: #534AB7; }
+  .node-teal { fill: #E1F5EE; stroke: #0F6E56; }
+  .node-coral { fill: #FAECE7; stroke: #993C1D; }
+  .node-gray { fill: #F1EFE8; stroke: #5F5E5A; }
+  .node-amber { fill: #FAEEDA; stroke: #BA7517; }
+  .label-purple { fill: #3C3489; font-family: var(--sans); }
+  .label-teal { fill: #085041; font-family: var(--sans); }
+  .label-coral { fill: #712B13; font-family: var(--sans); }
+  .label-gray { fill: #444441; font-family: var(--sans); }
+  .label-amber { fill: #633806; font-family: var(--sans); }
+  .label-title { font-size: 14px; font-weight: 500; }
+  .label-sub { font-size: 12px; opacity: 0.75; }
+  .arr { stroke: #888780; stroke-width: 1.5; fill: none; }
+  .arr-success { stroke: #3B6D11; stroke-width: 1.5; fill: none; }
+  .arr-danger { stroke: #993C1D; stroke-width: 1.5; fill: none; }
+
+  .wf-window { background: white; border-radius: 10px; overflow: hidden; border: 0.5px solid var(--hairline); }
+
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; letter-spacing: 0.03em; }
+  .pill-danger { background: var(--vermillion-soft); color: var(--vermillion); }
+  .pill-amber { background: var(--amber-soft); color: var(--amber-text); }
+  .pill-green { background: var(--green-soft); color: var(--green-text); }
+  .pill-info { background: var(--info-soft); color: var(--info-text); }
+  .pill-purple { background: var(--purple-soft); color: var(--purple-text); }
+  .pill-mute { background: var(--slate-soft); color: var(--muted); }
+
+  .persona-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+  .persona-card { background: white; border: 1px solid var(--hairline); border-radius: 10px; padding: 20px; }
+  .persona-card.skeptic { border-top: 3px solid var(--vermillion); }
+  .persona-card.operator { border-top: 3px solid var(--info-text); }
+  .persona-card.regulator { border-top: 3px solid var(--amber-text); }
+  .persona-card.portfolio { border-top: 3px solid var(--purple-text); }
+  .persona-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .persona-name { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-top: 4px; }
+  .persona-attacks { font-size: 13px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .persona-q { background: var(--slate-soft); border-left: 3px solid var(--ink); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 12px; line-height: 1.5; margin-top: 12px; font-style: italic; }
+
+  .rubric-row { display: grid; grid-template-columns: 160px 1fr 1fr 60px; gap: 16px; align-items: start; padding: 14px 0; border-bottom: 1px dashed var(--hairline); }
+  .rubric-row:last-child { border-bottom: none; }
+  .rubric-label { font-weight: 500; font-size: 14px; }
+  .rubric-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .rubric-example { font-size: 12px; color: var(--muted); font-style: italic; line-height: 1.5; }
+  .rubric-max { font-family: var(--mono); font-size: 13px; font-weight: 500; text-align: right; }
+
+  .ic-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 0.5px solid var(--hairline); background: var(--warm-white); }
+  .ic-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .ic-title { font-weight: 500; font-size: 14px; margin-top: 2px; }
+  .ic-timer { font-family: var(--mono); font-size: 13px; padding: 4px 10px; background: white; border: 1px solid var(--hairline); border-radius: 6px; }
+  .ic-body { display: grid; grid-template-columns: 260px 1fr; gap: 14px; padding: 14px; }
+  .ic-brief { background: var(--slate-soft); border: 0.5px solid var(--hairline); border-radius: 8px; padding: 14px; font-size: 12px; }
+  .ic-brief-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .ic-brief-row { padding: 3px 0; display: flex; justify-content: space-between; border-bottom: 1px dashed var(--hairline); }
+  .ic-brief-row:last-child { border-bottom: none; }
+  .ic-brief-row span:first-child { color: var(--muted); }
+  .ic-brief-row span:last-child { font-weight: 500; }
+  .ic-committee { display: flex; flex-direction: column; gap: 8px; }
+  .ic-member { border: 0.5px solid var(--hairline); border-radius: 8px; padding: 10px 12px; background: white; }
+  .ic-member.active { border-color: var(--vermillion); background: var(--vermillion-soft); }
+  .ic-member-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .ic-member-name { font-weight: 500; font-size: 13px; }
+  .ic-member-name.active-name { color: var(--vermillion); }
+  .ic-member-status { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .ic-member-status.speaking { color: var(--vermillion); }
+  .ic-member-msg { font-size: 13px; line-height: 1.5; }
+  .ic-member-msg.placeholder { color: var(--muted); font-style: italic; }
+  .ic-member-msg.active-msg { color: #6B1A07; }
+  .ic-input { margin: 0 14px 14px; border: 0.5px solid var(--hairline); border-radius: 8px; background: white; padding: 12px 14px; }
+  .ic-input-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .ic-input-text { font-size: 13px; color: var(--muted); padding: 6px 0; min-height: 32px; }
+  .ic-input-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--hairline); }
+  .ic-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .btn-primary { background: var(--ink); color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+  .btn-secondary { background: transparent; color: var(--ink); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 0.5px solid var(--hairline); }
+  .btn-vermillion { background: var(--vermillion); color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+
+  .typing-dots { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .typing-dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--vermillion); opacity: 0.6; }
+  .typing-dots span:nth-child(1) { animation: dot 1.4s infinite; }
+  .typing-dots span:nth-child(2) { animation: dot 1.4s infinite 0.2s; }
+  .typing-dots span:nth-child(3) { animation: dot 1.4s infinite 0.4s; }
+  @keyframes dot { 0%, 60%, 100% { opacity: 0.2; } 30% { opacity: 1; } }
+
+  .transcript { background: white; border: 0.5px solid var(--hairline); border-radius: 8px; padding: 16px 20px; margin: 14px; font-size: 13px; line-height: 1.6; max-height: 380px; overflow-y: auto; }
+  .transcript-turn { padding: 10px 0; border-bottom: 1px dashed var(--hairline); }
+  .transcript-turn:last-child { border-bottom: none; }
+  .transcript-speaker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .transcript-speaker.user { color: var(--ink); font-weight: 500; }
+
+  .tab-nav { display: flex; gap: 4px; padding: 0 14px; margin-top: 8px; border-bottom: 0.5px solid var(--hairline); }
+  .tab { padding: 8px 14px; font-size: 12px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--ink); border-bottom-color: var(--vermillion); }
+
+  .modal-backdrop { background: rgba(26,26,26,0.45); padding: 60px 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; min-height: 360px; }
+  .modal-card { background: white; border-radius: 12px; padding: 28px 32px; max-width: 420px; width: 100%; }
+  .modal-title { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 8px; }
+  .modal-body { font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .notion-header { padding: 18px 24px; border-bottom: 0.5px solid var(--hairline); }
+  .notion-head-row { display: flex; justify-content: space-between; align-items: center; }
+  .notion-filters { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .filter-divider { width: 1px; height: 20px; background: var(--hairline); margin: 0 4px; }
+  .notion-meta { margin-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .notion-row { padding: 14px 24px; border-bottom: 0.5px solid var(--hairline); display: grid; grid-template-columns: 36px 1fr 70px 70px 56px 100px; gap: 14px; align-items: center; }
+  .notion-row.active { background: var(--vermillion-soft); }
+  .notion-row:last-child { border-bottom: none; }
+  .ssi-badge { width: 28px; height: 28px; color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 500; }
+  .ssi-hot { background: var(--vermillion); }
+  .ssi-strong { background: var(--amber-text); }
+  .ssi-emerging { background: var(--muted); }
+  .notion-co-name { font-weight: 500; font-size: 14px; }
+  .notion-co-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .notion-tags { display: flex; gap: 4px; margin-top: 6px; }
+  .notion-footer { padding: 12px 24px; background: var(--warm-white); border-top: 0.5px solid var(--hairline); display: flex; justify-content: space-between; align-items: center; }
+  .notion-footer span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .brief-hero { padding: 28px 32px; border-bottom: 0.5px solid var(--hairline); display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; }
+  .brief-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .brief-h1 { font-family: var(--serif); font-size: 32px; font-weight: 500; margin: 4px 0 6px; }
+  .brief-tagline { font-size: 15px; color: var(--muted); line-height: 1.5; max-width: 560px; }
+  .brief-meta-pills { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .brief-ssi { text-align: right; }
+  .brief-ssi-num { font-family: var(--serif); font-size: 56px; font-weight: 500; line-height: 1; }
+  .brief-ssi-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .brief-grid { padding: 20px 32px 28px; display: grid; grid-template-columns: 200px 1fr; gap: 28px; }
+  .brief-side { background: var(--slate-soft); border-radius: 8px; padding: 16px; font-size: 13px; }
+  .brief-side-row { padding: 5px 0; display: flex; justify-content: space-between; border-bottom: 1px dashed var(--hairline); }
+  .brief-side-row:last-child { border-bottom: none; }
+  .brief-side-row span:first-child { color: var(--muted); font-size: 12px; }
+  .brief-side-row span:last-child { font-weight: 500; font-size: 12px; }
+  .brief-main { font-size: 14px; line-height: 1.65; }
+  .brief-section { margin-bottom: 20px; }
+  .brief-section h4 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .brief-section p { margin-bottom: 8px; }
+  .brief-signal { background: var(--vermillion-soft); border-left: 3px solid var(--vermillion); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.55; }
+  .brief-enrichment { background: var(--info-soft); border-left: 3px solid var(--info-text); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.55; }
+  .brief-actions { padding: 16px 32px; background: var(--warm-white); border-top: 0.5px solid var(--hairline); display: flex; justify-content: space-between; align-items: center; }
+
+  .mobile-triptych { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+  .phone-frame { background: #1a1a1a; border-radius: 28px; padding: 12px; }
+  .phone-screen { background: white; border-radius: 20px; overflow: hidden; aspect-ratio: 9 / 19.5; display: flex; flex-direction: column; font-size: 11px; }
+  .phone-status { display: flex; justify-content: space-between; padding: 8px 14px 4px; font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .phone-content { flex: 1; overflow: hidden; padding: 0 12px; }
+  .phone-caption { text-align: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 12px; }
+  .m-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--hairline); }
+  .m-timer { font-family: var(--mono); font-size: 11px; padding: 2px 6px; background: var(--vermillion-soft); color: var(--vermillion); border-radius: 4px; }
+  .m-eyebrow { font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .m-title { font-weight: 500; font-size: 11px; }
+  .m-brief-drawer { background: var(--slate-soft); border-radius: 6px; padding: 8px; margin: 8px 0; font-size: 9px; display: flex; justify-content: space-between; }
+  .m-member { border: 0.5px solid var(--hairline); border-radius: 6px; padding: 7px 8px; margin: 5px 0; }
+  .m-member.m-active { border-color: var(--vermillion); background: var(--vermillion-soft); }
+  .m-member-name { font-weight: 500; font-size: 10px; }
+  .m-member-msg { font-size: 10px; margin-top: 3px; color: var(--ink); line-height: 1.3; }
+  .m-member-msg.placeholder { color: var(--muted); font-style: italic; }
+  .m-input { border: 0.5px solid var(--hairline); border-radius: 6px; padding: 8px; margin-top: 8px; }
+  .m-input-text { font-size: 10px; color: var(--muted); }
+  .m-landing-eyebrow { font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--vermillion); padding-top: 16px; }
+  .m-landing-title { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.05; margin: 6px 0; }
+  .m-landing-sub { font-size: 11px; color: var(--muted); line-height: 1.45; }
+  .m-tabs { display: flex; gap: 4px; margin-top: 14px; }
+  .m-tab { padding: 4px 8px; font-size: 9px; border-radius: 5px; background: var(--slate-soft); }
+  .m-tab.active { background: var(--ink); color: white; }
+  .m-field { background: var(--slate-soft); border-radius: 6px; padding: 7px; margin-top: 6px; font-size: 10px; color: var(--muted); }
+  .m-cta { margin-top: 12px; background: var(--vermillion); color: white; text-align: center; padding: 9px; border-radius: 8px; font-size: 11px; font-weight: 500; }
+  .m-rep-hero { padding-top: 12px; display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 12px; border-bottom: 0.5px solid var(--hairline); }
+  .m-rep-meta { font-size: 9px; color: var(--muted); }
+  .m-rep-title { font-family: var(--serif); font-size: 14px; font-weight: 500; margin-top: 4px; }
+  .m-rep-score { font-family: var(--serif); font-size: 40px; font-weight: 500; line-height: 1; }
+  .m-rep-verdict { font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; background: var(--green-soft); color: var(--green-text); padding: 2px 6px; border-radius: 3px; margin-top: 4px; display: inline-block; }
+  .m-rubric-row { display: grid; grid-template-columns: 78px 1fr 26px; gap: 6px; align-items: center; padding: 5px 0; font-size: 9px; }
+  .m-rubric-bar { background: var(--slate-soft); height: 4px; border-radius: 2px; }
+  .m-rubric-fill { background: var(--vermillion); height: 100%; border-radius: 2px; }
+  .m-rubric-score { font-family: var(--mono); font-size: 9px; font-weight: 500; text-align: right; }
+
+  .voice-circle-wrap { display: flex; align-items: center; justify-content: center; padding: 36px 0; }
+  .voice-circle { width: 100px; height: 100px; border-radius: 50%; background: var(--vermillion); color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; position: relative; }
+  .voice-circle::before, .voice-circle::after { content: ''; position: absolute; border: 2px solid var(--vermillion); border-radius: 50%; }
+  .voice-circle::before { inset: -16px; opacity: 0.4; }
+  .voice-circle::after { inset: -32px; opacity: 0.15; }
+  .voice-status { text-align: center; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--vermillion); margin-top: 12px; }
+  .voice-help { text-align: center; font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .voice-waveform { display: flex; gap: 3px; justify-content: center; align-items: center; height: 40px; margin-top: 12px; }
+  .voice-bar { width: 3px; background: var(--vermillion); border-radius: 2px; opacity: 0.7; }
+
+  .rep-hero { padding: 24px 28px; border-bottom: 0.5px solid var(--hairline); display: flex; justify-content: space-between; align-items: flex-end; }
+  .rep-meta-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .rep-meta-title { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-top: 6px; }
+  .rep-meta-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .rep-score-num { font-family: var(--serif); font-size: 56px; font-weight: 500; line-height: 1; }
+  .rep-score-total { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .rep-verdict { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 6px; background: var(--green-soft); color: var(--green-text); }
+  .rep-rubric { padding: 24px 28px; }
+  .rep-rubric-row { display: grid; grid-template-columns: 160px 1fr 40px; gap: 16px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--hairline); }
+  .rep-rubric-row:last-child { border-bottom: none; }
+  .rep-rubric-bar { background: var(--slate-soft); height: 6px; border-radius: 3px; overflow: hidden; }
+  .rep-rubric-fill { height: 100%; border-radius: 3px; }
+  .rep-rubric-score { font-family: var(--mono); font-size: 13px; font-weight: 500; text-align: right; }
+  .rep-feedback { padding: 0 28px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .rep-feedback h4 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; color: var(--muted); }
+  .rep-feedback li { list-style: none; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--hairline); line-height: 1.5; }
+  .rep-feedback li:last-child { border-bottom: none; }
+
+  .timeline { background: white; border: 1px solid var(--hairline); border-radius: 10px; padding: 24px; }
+  .timeline-week { padding: 14px 0; border-bottom: 1px dashed var(--hairline); display: grid; grid-template-columns: 100px 1fr; gap: 24px; align-items: start; }
+  .timeline-week:last-child { border-bottom: none; }
+  .timeline-tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--vermillion); padding-top: 2px; }
+  .timeline-content h4 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .timeline-content p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  .triggers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 24px 0; }
+  .trigger-card { background: white; border: 1px solid var(--hairline); border-radius: 10px; padding: 18px; }
+  .trigger-icon { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--vermillion); margin-bottom: 8px; }
+  .trigger-name { font-family: var(--serif); font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+  .trigger-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .trigger-list { font-family: var(--mono); font-size: 11px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--hairline); color: var(--ink); }
+  .trigger-list-item { padding: 3px 0; }
+
+  footer { border-top: 1px solid var(--hairline); margin-top: 80px; padding-top: 32px; color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 900px) {
+    .doc-title { font-size: 36px; }
+    .mobile-triptych { grid-template-columns: 1fr; max-width: 320px; margin: 24px auto; }
+    .ic-body, .brief-grid { grid-template-columns: 1fr; }
+    .rep-feedback { grid-template-columns: 1fr; }
+    .brief-hero { grid-template-columns: 1fr; }
+    .brief-ssi { text-align: left; }
+    .notion-row { grid-template-columns: 28px 1fr 60px; gap: 8px; }
+    .notion-row > div:nth-child(4), .notion-row > div:nth-child(5) { display: none; }
+    .toc-list { columns: 1; }
+    .persona-grid { grid-template-columns: 1fr; }
+    .triggers-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="doc-header">
+    <div class="doc-eyebrow">Product design document · canonical version</div>
+    <h1 class="doc-title">IC Sim</h1>
+    <p class="doc-subtitle">An adversarial Investment Committee simulator. Pull a deal from your live Notion pipeline or paste a brief. Defend it against four AI committee members with distinct attack vectors. Receive a five-dimension scored report. Built around your actual SSI framework. Worked example throughout: TORTUS AI (SSI 82, P0, Seed, Healthcare AI).</p>
+    <div class="doc-meta">
+      <span>Author <strong>Sevda Anefi</strong></span>
+      <span>Project <strong>ic-sim.anefi.vc</strong></span>
+      <span>Status <strong>Design complete · ready to build</strong></span>
+      <span>Build <strong>~2 weeks MVP</strong></span>
+    </div>
+  </header>
+
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <div class="toc-list">
+      <a href="#concept"><span class="toc-num">01</span>Concept</a>
+      <a href="#journey"><span class="toc-num">02</span>User journey</a>
+      <a href="#personas"><span class="toc-num">03</span>Four committee personas</a>
+      <a href="#rubric"><span class="toc-num">04</span>Five-dimension rubric</a>
+      <a href="#system"><span class="toc-num">05</span>System architecture</a>
+      <a href="#notion"><span class="toc-num">06</span>Notion integration</a>
+      <a href="#brief"><span class="toc-num">07</span>Detailed brief view</a>
+      <a href="#enrichment"><span class="toc-num">08</span>Web search enrichment</a>
+      <a href="#turn"><span class="toc-num">09</span>Turn orchestrator</a>
+      <a href="#room"><span class="toc-num">10</span>IC Room (live + transcript)</a>
+      <a href="#voice"><span class="toc-num">11</span>Voice mode</a>
+      <a href="#mid"><span class="toc-num">12</span>Mid-session states</a>
+      <a href="#report"><span class="toc-num">13</span>Post-IC report</a>
+      <a href="#mobile"><span class="toc-num">14</span>Mobile breakpoints</a>
+      <a href="#triggers"><span class="toc-num">15</span>Triggering surfaces</a>
+      <a href="#roadmap"><span class="toc-num">16</span>Build roadmap</a>
+    </div>
+  </div>
+
+  <section id="concept">
+    <div class="section-eyebrow">01 · Concept</div>
+    <h2>The pitch in one paragraph</h2>
+    <p class="lead">IC Sim drops you in front of four AI committee members. The Skeptic attacks market thesis. The Operator attacks execution. The Regulatory Hawk attacks compliance moat. The Portfolio Lens attacks fund fit. You defend a real deal — pulled live from your Notion Dealflow or pasted in — over eight to twelve exchanges in about fifteen minutes. A judge scores your performance against a five-dimension rubric and produces a shareable PDF report. The point is not to win. The point is to find the questions you cannot yet answer, before a real partner finds them for you.</p>
+  </section>
+
+  <section id="journey">
+    <div class="section-eyebrow">02 · User journey</div>
+    <h2>From URL to report in 18 minutes</h2>
+    <p>The complete flow has five surfaces. The deal entry chooses between three input modes. Notion is the most powerful because it ties to your live pipeline; manual paste handles deals from elsewhere; sample loads TORTUS AI for first-time visitors.</p>
+
+    <div class="visual">
+      <svg width="100%" viewBox="0 0 880 200" role="img">
+        <defs>
+          <marker id="arrJ" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5"/>
+          </marker>
+        </defs>
+        <g>
+          <rect class="node-gray" x="20" y="60" width="140" height="80" rx="8" stroke-width="0.5"/>
+          <text class="label-gray label-title" x="90" y="92" text-anchor="middle">Landing</text>
+          <text class="label-gray label-sub" x="90" y="112" text-anchor="middle">Deal entry</text>
+          <text class="label-gray label-sub" x="90" y="126" text-anchor="middle">3 modes</text>
+        </g>
+        <line x1="160" y1="100" x2="200" y2="100" class="arr" marker-end="url(#arrJ)"/>
+        <g>
+          <rect class="node-purple" x="200" y="60" width="140" height="80" rx="8" stroke-width="0.5"/>
+          <text class="label-purple label-title" x="270" y="92" text-anchor="middle">Brief view</text>
+          <text class="label-purple label-sub" x="270" y="112" text-anchor="middle">2-3 min read</text>
+          <text class="label-purple label-sub" x="270" y="126" text-anchor="middle">Enriched</text>
+        </g>
+        <line x1="340" y1="100" x2="380" y2="100" class="arr" marker-end="url(#arrJ)"/>
+        <g>
+          <rect class="node-coral" x="380" y="60" width="160" height="80" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="460" y="92" text-anchor="middle">IC Room</text>
+          <text class="label-coral label-sub" x="460" y="112" text-anchor="middle">15 min</text>
+          <text class="label-coral label-sub" x="460" y="126" text-anchor="middle">8-12 turns</text>
+        </g>
+        <line x1="540" y1="100" x2="580" y2="100" class="arr" marker-end="url(#arrJ)"/>
+        <g>
+          <rect class="node-amber" x="580" y="60" width="140" height="80" rx="8" stroke-width="0.5"/>
+          <text class="label-amber label-title" x="650" y="92" text-anchor="middle">Judge runs</text>
+          <text class="label-amber label-sub" x="650" y="112" text-anchor="middle">~6s</text>
+          <text class="label-amber label-sub" x="650" y="126" text-anchor="middle">5 dims</text>
+        </g>
+        <line x1="720" y1="100" x2="760" y2="100" class="arr" marker-end="url(#arrJ)"/>
+        <g>
+          <rect class="node-teal" x="760" y="60" width="100" height="80" rx="8" stroke-width="0.5"/>
+          <text class="label-teal label-title" x="810" y="92" text-anchor="middle">Report</text>
+          <text class="label-teal label-sub" x="810" y="112" text-anchor="middle">PDF +</text>
+          <text class="label-teal label-sub" x="810" y="126" text-anchor="middle">share</text>
+        </g>
+      </svg>
+      <div class="visual-caption">Figure · End-to-end user journey · 18 min total target</div>
+    </div>
+  </section>
+
+  <section id="personas">
+    <div class="section-eyebrow">03 · Four committee personas</div>
+    <h2>Each persona owns a distinct attack vector</h2>
+    <p>The committee disagrees on purpose. Each persona has its own system prompt, its own keyword triggers, and its own preferred lines of attack. When they conflict, the conflict is real — the Skeptic and the Regulator will give contradictory advice on the same deal, and you have to navigate both.</p>
+
+    <div class="persona-grid">
+      <div class="persona-card skeptic">
+        <div class="persona-eyebrow">Persona 1</div>
+        <div class="persona-name">The Skeptic</div>
+        <div class="persona-attacks">Market thesis, TAM, competition, incumbents, substitution risk, why-now. Defaults to "this doesn't matter or won't work." Cites comparables and historical failures.</div>
+        <div class="persona-q">Heidi already does this and is free for clinicians. Walk me through who pays TORTUS and why they wouldn't standardise on Heidi inside twelve months.</div>
+      </div>
+
+      <div class="persona-card operator">
+        <div class="persona-eyebrow">Persona 2</div>
+        <div class="persona-name">The Operator</div>
+        <div class="persona-attacks">Unit economics, burn, hiring, runway, gross margin, ship velocity, technical debt. Has built and shipped. Will not let qualitative answers stand.</div>
+        <div class="persona-q">£4.2M from Khosla plus the £3.6M MHRA programme funding gives you about £7M effective runway at current burn. What's the next 12 months of hiring and how does that change the burn curve?</div>
+      </div>
+
+      <div class="persona-card regulator">
+        <div class="persona-eyebrow">Persona 3</div>
+        <div class="persona-name">The Regulatory Hawk</div>
+        <div class="persona-attacks">EU AI Act, DORA, GDPR, MDR, MHRA, ISO/IEC frameworks. Knows the article numbers. Will question whether the compliance moat is real or theatre.</div>
+        <div class="persona-q">Class IIa requires post-market surveillance under MDR Article 83. TORTUS has 24 people. Walk me through who runs vigilance reporting when X-on Health doubles the install base.</div>
+      </div>
+
+      <div class="persona-card portfolio">
+        <div class="persona-eyebrow">Persona 4</div>
+        <div class="persona-name">The Portfolio Lens</div>
+        <div class="persona-attacks">Fund construction, ownership, follow-on capacity, conflict with portfolio companies, signaling risk to co-investors. The most institutional voice.</div>
+        <div class="persona-q">Tandem Health is at SSI 86 in your own pipeline. Both target healthcare workflow. How does this not cannibalize Tandem if you back both?</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="rubric">
+    <div class="section-eyebrow">04 · Scoring</div>
+    <h2>Five dimensions, ten points each, fifty total</h2>
+    <p>The judge agent (a separate Sonnet call at session end) scores the user against five dimensions. Each scored 1-10. Total maps to a verdict band. The rubric rewards proactive risk acknowledgment, specific data, and thesis discipline. It does not reward agreeing with the committee — strong defenses can disagree, as long as the reasoning holds.</p>
+
+    <div class="visual">
+      <div class="rubric-row">
+        <div class="rubric-label">Conviction clarity</div>
+        <div class="rubric-desc">How clearly the user states their thesis on the deal and holds it under pressure</div>
+        <div class="rubric-example">"Strong: names the catalyst in turn 1, restates after pushback." "Weak: hedges, retreats to vague claims when challenged."</div>
+        <div class="rubric-max">/ 10</div>
+      </div>
+      <div class="rubric-row">
+        <div class="rubric-label">Risk acknowledgment</div>
+        <div class="rubric-desc">Whether the user surfaces material risks before being asked</div>
+        <div class="rubric-example">"Strong: names top 3 risks in opening defense." "Weak: only acknowledges risks the committee raises."</div>
+        <div class="rubric-max">/ 10</div>
+      </div>
+      <div class="rubric-row">
+        <div class="rubric-label">Data density</div>
+        <div class="rubric-desc">Specific numbers, dates, named comparables, cited sources</div>
+        <div class="rubric-example">"Strong: 4 incident reports, median 6 days to file, vs MDR 15-day requirement." "Weak: 'we're growing fast.'"</div>
+        <div class="rubric-max">/ 10</div>
+      </div>
+      <div class="rubric-row">
+        <div class="rubric-label">Thesis alignment</div>
+        <div class="rubric-desc">How tightly the defense ties to a coherent investment thesis</div>
+        <div class="rubric-example">"Strong: deal explicitly mapped to Vertical SoR thesis with named catalysts." "Weak: thesis-shopping, retrofitting."</div>
+        <div class="rubric-max">/ 10</div>
+      </div>
+      <div class="rubric-row">
+        <div class="rubric-label">Poise under pressure</div>
+        <div class="rubric-desc">Composure when challenged, willingness to disagree, clean correction of partial answers</div>
+        <div class="rubric-example">"Strong: corrects the Regulator's incomplete summary cleanly." "Weak: capitulates or gets defensive."</div>
+        <div class="rubric-max">/ 10</div>
+      </div>
+      <div class="visual-caption">Five-dimension rubric · 50 points total · verdict thresholds 42+/35+/28+/below</div>
+    </div>
+  </section>
+
+  <section id="system">
+    <div class="section-eyebrow">05 · System architecture</div>
+    <h2>How the pieces fit together</h2>
+    <p>Stateless Next.js server handling streaming responses via Server-Sent Events. Notion MCP for live deal data. Anthropic API for the four agents plus the orchestrator's evasion classifier plus the judge. Vercel KV caches generated briefs and (Phase 2) session history. Mobile-first responsive throughout.</p>
+
+    <div class="visual">
+      <svg width="100%" viewBox="0 0 720 540" role="img">
+        <defs>
+          <marker id="arrS" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5"/>
+          </marker>
+        </defs>
+
+        <g>
+          <rect class="node-purple" x="280" y="20" width="160" height="60" rx="8" stroke-width="0.5"/>
+          <text class="label-purple label-title" x="360" y="42" text-anchor="middle">User · browser</text>
+          <text class="label-purple label-sub" x="360" y="60" text-anchor="middle">Next.js client · React</text>
+          <text class="label-purple label-sub" x="360" y="74" text-anchor="middle">SSE consumer</text>
+        </g>
+
+        <g>
+          <rect class="node-gray" x="240" y="130" width="240" height="60" rx="8" stroke-width="0.5"/>
+          <text class="label-gray label-title" x="360" y="152" text-anchor="middle">Next.js server (Vercel edge)</text>
+          <text class="label-gray label-sub" x="360" y="170" text-anchor="middle">Streaming endpoint /api/ic-turn</text>
+          <text class="label-gray label-sub" x="360" y="184" text-anchor="middle">Orchestrator · stateless</text>
+        </g>
+        <line x1="360" y1="80" x2="360" y2="128" class="arr" marker-end="url(#arrS)"/>
+
+        <g>
+          <rect class="node-teal" x="20" y="240" width="160" height="60" rx="8" stroke-width="0.5"/>
+          <text class="label-teal label-title" x="100" y="262" text-anchor="middle">Notion MCP</text>
+          <text class="label-teal label-sub" x="100" y="280" text-anchor="middle">Dealflow DB read</text>
+          <text class="label-teal label-sub" x="100" y="294" text-anchor="middle">OAuth per user</text>
+        </g>
+        <path d="M 280 175 L 100 238" class="arr" fill="none" marker-end="url(#arrS)"/>
+
+        <g>
+          <rect class="node-coral" x="200" y="240" width="160" height="60" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="280" y="262" text-anchor="middle">Web search</text>
+          <text class="label-coral label-sub" x="280" y="280" text-anchor="middle">Enrichment only</text>
+          <text class="label-coral label-sub" x="280" y="294" text-anchor="middle">Pre-session, cached</text>
+        </g>
+        <path d="M 320 188 L 280 238" class="arr" fill="none" marker-end="url(#arrS)"/>
+
+        <g>
+          <rect class="node-amber" x="380" y="240" width="160" height="60" rx="8" stroke-width="0.5"/>
+          <text class="label-amber label-title" x="460" y="262" text-anchor="middle">Anthropic API</text>
+          <text class="label-amber label-sub" x="460" y="280" text-anchor="middle">Sonnet 4.7 · agents</text>
+          <text class="label-amber label-sub" x="460" y="294" text-anchor="middle">Haiku 4.5 · evasion</text>
+        </g>
+        <path d="M 400 188 L 460 238" class="arr" fill="none" marker-end="url(#arrS)"/>
+
+        <g>
+          <rect class="node-gray" x="560" y="240" width="140" height="60" rx="8" stroke-width="0.5"/>
+          <text class="label-gray label-title" x="630" y="262" text-anchor="middle">Vercel KV</text>
+          <text class="label-gray label-sub" x="630" y="280" text-anchor="middle">Brief cache 24h</text>
+          <text class="label-gray label-sub" x="630" y="294" text-anchor="middle">P2 · session log</text>
+        </g>
+        <path d="M 440 188 L 620 238" class="arr" fill="none" marker-end="url(#arrS)"/>
+
+        <g>
+          <rect class="node-purple" x="60" y="350" width="160" height="50" rx="8" stroke-width="0.5"/>
+          <text class="label-purple label-title" x="140" y="370" text-anchor="middle">Skeptic agent</text>
+          <text class="label-purple label-sub" x="140" y="386" text-anchor="middle">System prompt 1</text>
+        </g>
+        <g>
+          <rect class="node-purple" x="240" y="350" width="160" height="50" rx="8" stroke-width="0.5"/>
+          <text class="label-purple label-title" x="320" y="370" text-anchor="middle">Operator agent</text>
+          <text class="label-purple label-sub" x="320" y="386" text-anchor="middle">System prompt 2</text>
+        </g>
+        <g>
+          <rect class="node-purple" x="60" y="420" width="160" height="50" rx="8" stroke-width="0.5"/>
+          <text class="label-purple label-title" x="140" y="440" text-anchor="middle">Regulator agent</text>
+          <text class="label-purple label-sub" x="140" y="456" text-anchor="middle">System prompt 3</text>
+        </g>
+        <g>
+          <rect class="node-purple" x="240" y="420" width="160" height="50" rx="8" stroke-width="0.5"/>
+          <text class="label-purple label-title" x="320" y="440" text-anchor="middle">Portfolio agent</text>
+          <text class="label-purple label-sub" x="320" y="456" text-anchor="middle">System prompt 4</text>
+        </g>
+
+        <g>
+          <rect class="node-teal" x="440" y="385" width="200" height="50" rx="8" stroke-width="0.5"/>
+          <text class="label-teal label-title" x="540" y="405" text-anchor="middle">Judge agent</text>
+          <text class="label-teal label-sub" x="540" y="421" text-anchor="middle">Session end · structured score</text>
+        </g>
+
+        <path d="M 460 300 L 140 348" class="arr" fill="none" marker-end="url(#arrS)" stroke-dasharray="2 3"/>
+        <path d="M 460 300 L 320 348" class="arr" fill="none" marker-end="url(#arrS)" stroke-dasharray="2 3"/>
+        <path d="M 460 300 L 140 418" class="arr" fill="none" marker-end="url(#arrS)" stroke-dasharray="2 3"/>
+        <path d="M 460 300 L 320 418" class="arr" fill="none" marker-end="url(#arrS)" stroke-dasharray="2 3"/>
+        <path d="M 480 300 L 540 383" class="arr" fill="none" marker-end="url(#arrS)" stroke-dasharray="2 3"/>
+      </svg>
+      <div class="visual-caption">Figure · System architecture · client / server / data layer / model layer</div>
+    </div>
+  </section>
+
+  <section id="notion">
+    <div class="section-eyebrow">06 · Notion integration</div>
+    <h2>Your live Dealflow becomes the deal selector</h2>
+    <p>When the user clicks <code>Pull from Notion</code>, the app queries the Dealflow data source at session start. Filters mirror the existing Notion filters: thesis, stage, priority, signal tier. SSI score is shown as a colored badge — vermillion for highest-conviction, amber for strong, gray for emerging. Direct MCP read on every session, not nightly sync — the pipeline is live thinking, and staleness defeats the purpose.</p>
+
+    <div class="visual">
+      <div class="wf-window">
+        <div class="notion-header">
+          <div class="notion-head-row">
+            <div>
+              <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);">Connected · Notion · Dealflow DB</div>
+              <div style="font-weight: 500; font-size: 16px; margin-top: 4px;">Pick a deal to defend</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <span class="btn-secondary" style="font-size: 11px; padding: 4px 10px;">Sort: SSI ▾</span>
+              <span class="btn-secondary" style="font-size: 11px; padding: 4px 10px;">Refresh</span>
+            </div>
+          </div>
+          <div class="notion-filters">
+            <span class="pill" style="background: var(--ink); color: white;">All theses</span>
+            <span class="pill pill-mute">Governed Agentic</span>
+            <span class="pill pill-mute">Vertical SoR</span>
+            <span class="filter-divider"></span>
+            <span class="pill pill-danger">P0</span>
+            <span class="pill pill-mute">P1</span>
+            <span class="pill pill-mute">P2</span>
+            <span class="filter-divider"></span>
+            <span class="pill pill-mute">Seed</span>
+            <span class="pill pill-mute">Series A</span>
+          </div>
+          <div class="notion-meta">Showing 5 of 70 · Filter: P0 · Sorted by SSI</div>
+        </div>
+
+        <div class="notion-row active">
+          <div class="ssi-badge ssi-hot">82</div>
+          <div>
+            <div class="notion-co-name">TORTUS AI</div>
+            <div class="notion-co-desc">AI clinical documentation writing directly into EHR systems · MHRA Class IIa medical device · 3,500+ GP practices via X-on Health</div>
+            <div class="notion-tags">
+              <span class="pill pill-green">Vertical SoR</span>
+              <span class="pill pill-amber">Healthcare AI</span>
+              <span class="pill pill-mute">London</span>
+            </div>
+          </div>
+          <div style="font-size: 12px;">Seed</div>
+          <div style="font-size: 12px;">London</div>
+          <div class="pill pill-danger">P0</div>
+          <div class="btn-primary" style="text-align: center;">Defend →</div>
+        </div>
+
+        <div class="notion-row">
+          <div class="ssi-badge ssi-hot">80</div>
+          <div>
+            <div class="notion-co-name">Deeploy</div>
+            <div class="notion-co-desc">AI governance and monitoring platform for ML systems in regulated industries · Article 9 risk management aligned</div>
+            <div class="notion-tags">
+              <span class="pill pill-info">Governed Agentic</span>
+              <span class="pill pill-mute">AI Governance</span>
+              <span class="pill pill-mute">Utrecht</span>
+            </div>
+          </div>
+          <div style="font-size: 12px;">Series A</div>
+          <div style="font-size: 12px;">Utrecht</div>
+          <div class="pill pill-danger">P0</div>
+          <div class="btn-secondary" style="text-align: center;">Defend</div>
+        </div>
+
+        <div class="notion-row">
+          <div class="ssi-badge ssi-strong">79</div>
+          <div>
+            <div class="notion-co-name">Numalis</div>
+            <div class="notion-co-desc">Formal verification for AI systems · ISO/IEC 25059 alignment · French defense pipeline</div>
+            <div class="notion-tags">
+              <span class="pill pill-info">Governed Agentic</span>
+              <span class="pill pill-mute">AI Governance</span>
+              <span class="pill pill-mute">Toulouse</span>
+            </div>
+          </div>
+          <div style="font-size: 12px;">Seed</div>
+          <div style="font-size: 12px;">Toulouse</div>
+          <div class="pill pill-danger">P0</div>
+          <div class="btn-secondary" style="text-align: center;">Defend</div>
+        </div>
+
+        <div class="notion-row">
+          <div class="ssi-badge ssi-strong">79</div>
+          <div>
+            <div class="notion-co-name">Alinia</div>
+            <div class="notion-co-desc">Customizable LLM safety and alignment layer · EU AI Act Article 9 risk management</div>
+            <div class="notion-tags">
+              <span class="pill pill-purple">Both</span>
+              <span class="pill pill-mute">AI Compliance</span>
+              <span class="pill pill-mute">Barcelona</span>
+            </div>
+          </div>
+          <div style="font-size: 12px;">Seed</div>
+          <div style="font-size: 12px;">Barcelona</div>
+          <div class="pill pill-danger">P0</div>
+          <div class="btn-secondary" style="text-align: center;">Defend</div>
+        </div>
+
+        <div class="notion-row">
+          <div class="ssi-badge ssi-strong">78</div>
+          <div>
+            <div class="notion-co-name">Noteless</div>
+            <div class="notion-co-desc">Multilingual clinical documentation · EN/NO/SV/DE · Real-time speech-to-structured-notes</div>
+            <div class="notion-tags">
+              <span class="pill pill-green">Vertical SoR</span>
+              <span class="pill pill-amber">Healthcare AI</span>
+              <span class="pill pill-mute">Oslo</span>
+            </div>
+          </div>
+          <div style="font-size: 12px;">Seed</div>
+          <div style="font-size: 12px;">Oslo</div>
+          <div class="pill pill-danger">P0</div>
+          <div class="btn-secondary" style="text-align: center;">Defend</div>
+        </div>
+
+        <div class="notion-footer">
+          <span>Last synced from Notion · 2 minutes ago</span>
+          <span>Load more →</span>
+        </div>
+      </div>
+      <div class="visual-caption">Wireframe · Notion deal picker · live read from Dealflow DB</div>
+    </div>
+  </section>
+
+  <section id="brief">
+    <div class="section-eyebrow">07 · Detailed brief view</div>
+    <h2>The pre-IC reading room</h2>
+    <p>Once a deal is selected, the user gets 2-3 minutes with the full brief before entering the room. Every relevant field from the Notion row is surfaced: SSI breakdown, key signal, last raise, catalyst window, anti-thesis filter, regulatory exposure. The brief stays accessible in the IC room as a left rail — but the user reads it here first. Web search enrichment (see next section) appends current data the Notion row doesn't have.</p>
+
+    <div class="visual">
+      <div class="wf-window">
+        <div class="brief-hero">
+          <div>
+            <div class="brief-eyebrow">Deal brief · pulled from Notion · 2 min read</div>
+            <div class="brief-h1">TORTUS AI</div>
+            <div class="brief-tagline">AI clinical documentation writing directly into EHR systems. NHS DTAC compliant. MHRA-registered medical device. 3,500+ GP practices via X-on Health partnership.</div>
+            <div class="brief-meta-pills">
+              <span class="pill pill-green">Vertical SoR AI</span>
+              <span class="pill pill-amber">Healthcare AI</span>
+              <span class="pill pill-mute">Seed · London</span>
+              <span class="pill pill-danger">P0 — Act Now</span>
+              <span class="pill pill-green">Anti-thesis: Clear</span>
+            </div>
+          </div>
+          <div class="brief-ssi">
+            <div class="brief-ssi-num">82</div>
+            <div class="brief-ssi-meta">SSI / 100</div>
+            <div class="brief-ssi-meta">High confidence</div>
+          </div>
+        </div>
+
+        <div class="brief-grid">
+          <div class="brief-side">
+            <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;">Row data</div>
+            <div class="brief-side-row"><span>Founded</span><span>2022</span></div>
+            <div class="brief-side-row"><span>Headcount</span><span>24</span></div>
+            <div class="brief-side-row"><span>HQ</span><span>London, UK</span></div>
+            <div class="brief-side-row"><span>Stage</span><span>Seed</span></div>
+            <div class="brief-side-row"><span>Last raise</span><span>$8.5M total</span></div>
+            <div class="brief-side-row"><span>Seed (2024)</span><span>$4.2M Khosla</span></div>
+            <div class="brief-side-row"><span>Raising</span><span>Active</span></div>
+            <div class="brief-side-row"><span>Catalyst window</span><span>91 days</span></div>
+            <div class="brief-side-row"><span>Falsifier</span><span>✅ Clean</span></div>
+            <div class="brief-side-row"><span>Last scored</span><span>3 May 2026</span></div>
+            <div class="brief-side-row"><span>Signal tier</span><span>🔴 Highest</span></div>
+          </div>
+
+          <div class="brief-main">
+            <div class="brief-section">
+              <h4>Why this is on the table</h4>
+              <p>TORTUS sits at the intersection of two thesis pressures: deep workflow embeddedness in the EHR (write-loop ownership, not overlay) and a regulatory moat that gates competitors. The MHRA registration as a Class IIa medical device is the kind of certification that takes 18 months and €400K to replicate. Once 3,500 GP practices are routed through it via X-on Health, switching cost is institutional, not technical.</p>
+            </div>
+
+            <div class="brief-section">
+              <h4>30-day signal · from Notion</h4>
+              <div class="brief-signal"><strong>MHRA AI Airlock Phase 2 inclusion + £3.6M programme funding (Apr 2026).</strong> GOSH multi-site rollout expanding. The catalyst — 91-day window is the time before next round.</div>
+            </div>
+
+            <div class="brief-section">
+              <h4>Web enrichment · current as of session</h4>
+              <div class="brief-enrichment">Heidi raised $19M Series A in March 2026 from Sequoia. Nuance Dragon Ambient eXperience priced at $200/clinician/month. Epic announced "Smart Prompts" feature in their April 2026 product roadmap — limited beta, no GA date. UK NHS Long Term Workforce Plan released May 2026 with explicit AI documentation budget line of £80M FY2026.</div>
+            </div>
+
+            <div class="brief-section">
+              <h4>The defense you are giving</h4>
+              <p>You are recommending TORTUS as a seed-stage check at a £15M post-money cap. The committee will not give you "is this a good company" — they will ask:</p>
+              <p style="margin-left: 16px; color: var(--muted);">— Why would a hospital that already uses Heidi or Nuance switch?<br>— What protects you from being a feature in Epic / Cerner / Doctolib?<br>— Why £15M post when the last round was at $25M post 18 months ago?<br>— What's the GP-vs-hospital go-to-market sequence?</p>
+            </div>
+
+            <div class="brief-section">
+              <h4>Kill criteria · from Notion</h4>
+              <p>If Epic ships native AI documentation in next 9 months → conviction drops 30 points. If MHRA Airlock pulls back to Phase 1 → 15 points. If GOSH expansion stalls → 10 points.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="brief-actions">
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--muted);">Notion row + 4 web searches · ready</div>
+          <div style="display: flex; gap: 8px;">
+            <span class="btn-secondary">Re-read · 3 min</span>
+            <span class="btn-primary">Enter the room →</span>
+          </div>
+        </div>
+      </div>
+      <div class="visual-caption">Wireframe · Detailed brief view · Notion fields + web enrichment surfaced before entering IC room</div>
+    </div>
+  </section>
+
+  <section id="enrichment">
+    <div class="section-eyebrow">08 · Web search enrichment</div>
+    <h2>How agents reference current data without per-turn search latency</h2>
+    <p>Agents need current data. The Skeptic citing Heidi's 2024 pricing is embarrassing in a 2026 session. But mid-turn web search adds 2-3 seconds to every question and is hard to predict which turns need it. The answer is pre-session enrichment: a fixed set of web searches runs once when the deal is selected, the results are appended to the brief, and the brief becomes context for every agent's system prompt.</p>
+
+    <h3>The five enrichment queries</h3>
+    <p>When a deal is loaded, five parallel <code>web_search</code> calls run with the company name, stage, sector, and known catalysts:</p>
+
+    <div class="visual">
+      <svg width="100%" viewBox="0 0 720 380" role="img">
+        <defs>
+          <marker id="arrE" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5"/>
+          </marker>
+        </defs>
+
+        <g>
+          <rect class="node-gray" x="270" y="20" width="180" height="48" rx="8" stroke-width="0.5"/>
+          <text class="label-gray label-title" x="360" y="42" text-anchor="middle">Deal selected</text>
+          <text class="label-gray label-sub" x="360" y="60" text-anchor="middle">Notion fetch complete</text>
+        </g>
+
+        <g>
+          <rect class="node-amber" x="270" y="100" width="180" height="48" rx="8" stroke-width="0.5"/>
+          <text class="label-amber label-title" x="360" y="122" text-anchor="middle">Parallel enrichment</text>
+          <text class="label-amber label-sub" x="360" y="140" text-anchor="middle">5 web_search calls</text>
+        </g>
+        <line x1="360" y1="68" x2="360" y2="98" class="arr" marker-end="url(#arrE)"/>
+
+        <g>
+          <rect class="node-coral" x="20" y="190" width="140" height="56" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="90" y="208" text-anchor="middle">Q1 · Funding</text>
+          <text class="label-coral label-sub" x="90" y="224" text-anchor="middle">"[company] funding</text>
+          <text class="label-coral label-sub" x="90" y="238" text-anchor="middle">round last 90 days"</text>
+        </g>
+        <g>
+          <rect class="node-coral" x="170" y="190" width="140" height="56" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="240" y="208" text-anchor="middle">Q2 · Competitors</text>
+          <text class="label-coral label-sub" x="240" y="224" text-anchor="middle">"[sector] pricing</text>
+          <text class="label-coral label-sub" x="240" y="238" text-anchor="middle">2026"</text>
+        </g>
+        <g>
+          <rect class="node-coral" x="320" y="190" width="140" height="56" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="390" y="208" text-anchor="middle">Q3 · Regulatory</text>
+          <text class="label-coral label-sub" x="390" y="224" text-anchor="middle">"[catalyst] enforcement</text>
+          <text class="label-coral label-sub" x="390" y="238" text-anchor="middle">2026 update"</text>
+        </g>
+        <g>
+          <rect class="node-coral" x="470" y="190" width="140" height="56" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="540" y="208" text-anchor="middle">Q4 · Incumbents</text>
+          <text class="label-coral label-sub" x="540" y="224" text-anchor="middle">"[incumbent] AI</text>
+          <text class="label-coral label-sub" x="540" y="238" text-anchor="middle">roadmap"</text>
+        </g>
+        <g>
+          <rect class="node-coral" x="190" y="270" width="300" height="56" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="340" y="288" text-anchor="middle">Q5 · Comparables</text>
+          <text class="label-coral label-sub" x="340" y="304" text-anchor="middle">"[sector] Series A comp set</text>
+          <text class="label-coral label-sub" x="340" y="318" text-anchor="middle">2026 valuation multiple"</text>
+        </g>
+        <line x1="270" y1="148" x2="90" y2="188" class="arr" marker-end="url(#arrE)"/>
+        <line x1="290" y1="148" x2="240" y2="188" class="arr" marker-end="url(#arrE)"/>
+        <line x1="380" y1="148" x2="390" y2="188" class="arr" marker-end="url(#arrE)"/>
+        <line x1="430" y1="148" x2="540" y2="188" class="arr" marker-end="url(#arrE)"/>
+        <line x1="340" y1="148" x2="340" y2="268" class="arr" marker-end="url(#arrE)"/>
+
+        <g>
+          <rect class="node-teal" x="200" y="350" width="320" height="0" rx="8" stroke-width="0.5"/>
+        </g>
+        <g>
+          <rect class="node-teal" x="200" y="345" width="320" height="20" rx="6" stroke-width="0.5"/>
+          <text class="label-teal label-sub" x="360" y="358" text-anchor="middle">Results merged into brief · cached 24h · injected into agent prompts</text>
+        </g>
+        <path d="M 90 246 L 360 343" class="arr-success" fill="none" marker-end="url(#arrE)" stroke-dasharray="2 3"/>
+        <path d="M 240 246 L 360 343" class="arr-success" fill="none" marker-end="url(#arrE)" stroke-dasharray="2 3"/>
+        <path d="M 390 246 L 360 343" class="arr-success" fill="none" marker-end="url(#arrE)" stroke-dasharray="2 3"/>
+        <path d="M 540 246 L 360 343" class="arr-success" fill="none" marker-end="url(#arrE)" stroke-dasharray="2 3"/>
+        <path d="M 340 326 L 360 343" class="arr-success" fill="none" marker-end="url(#arrE)"/>
+      </svg>
+      <div class="visual-caption">Figure · Pre-session enrichment · 5 parallel searches · ~2-3s total · cached 24h</div>
+    </div>
+
+    <h3>Why pre-session, not mid-turn</h3>
+    <p>Mid-turn search forces every potentially-searching turn to pay 2-3 seconds of latency. Pre-session pays the latency once (parallelised, ~3s total) during the brief view, which the user reads anyway. Cached results live for 24 hours keyed by deal ID + day, so re-runs of the same session within a day are instant.</p>
+
+    <h3>Phase 2 exception: targeted fact-check</h3>
+    <p>If the user makes a specific factual claim during a turn — "Heidi just raised $50M" — the orchestrator triggers a single fast Haiku-driven fact-check call before the next agent speaks. The next agent then has the verified or contradicted claim in its context. One injection point per session at most, not per turn.</p>
+  </section>
+
+  <section id="turn">
+    <div class="section-eyebrow">09 · Turn orchestrator</div>
+    <h2>How the orchestrator decides who speaks</h2>
+    <p>A naive round-robin makes agents feel scripted. A pure-LLM "pick the next speaker" call wastes tokens and adds latency. The right answer is a rule-based decision tree with one small LLM call for response quality assessment.</p>
+
+    <div class="visual">
+      <svg width="100%" viewBox="0 0 720 760" role="img">
+        <defs>
+          <marker id="arrTO" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5"/>
+          </marker>
+        </defs>
+
+        <g>
+          <rect class="node-gray" x="260" y="20" width="200" height="48" rx="8" stroke-width="0.5"/>
+          <text class="label-gray label-title" x="360" y="42" text-anchor="middle">User submits response</text>
+          <text class="label-gray label-sub" x="360" y="60" text-anchor="middle">Orchestrator runs</text>
+        </g>
+
+        <g>
+          <rect class="node-amber" x="240" y="110" width="240" height="58" rx="8" stroke-width="0.5"/>
+          <text class="label-amber label-title" x="360" y="132" text-anchor="middle">Check 1 · Response quality</text>
+          <text class="label-amber label-sub" x="360" y="150" text-anchor="middle">Haiku 4.5 call · did user answer?</text>
+          <text class="label-amber label-sub" x="360" y="164" text-anchor="middle">Score 1-5 · temp 0.2 · ~400ms</text>
+        </g>
+        <line x1="360" y1="68" x2="360" y2="108" class="arr" marker-end="url(#arrTO)"/>
+
+        <g>
+          <rect class="node-coral" x="40" y="220" width="220" height="58" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="150" y="242" text-anchor="middle">Score ≤ 2 · evade detected</text>
+          <text class="label-coral label-sub" x="150" y="260" text-anchor="middle">→ Same agent re-asks</text>
+          <text class="label-coral label-sub" x="150" y="274" text-anchor="middle">Pressures actual answer</text>
+        </g>
+        <path d="M 280 168 L 150 218" class="arr-danger" fill="none" marker-end="url(#arrTO)"/>
+        <text class="label-coral label-sub" x="210" y="195" text-anchor="middle">≤ 2</text>
+
+        <g>
+          <rect class="node-amber" x="370" y="220" width="270" height="58" rx="8" stroke-width="0.5"/>
+          <text class="label-amber label-title" x="505" y="242" text-anchor="middle">Check 2 · Silence detection</text>
+          <text class="label-amber label-sub" x="505" y="260" text-anchor="middle">Has anyone been silent 4+ turns?</text>
+        </g>
+        <path d="M 440 168 L 505 218" class="arr" fill="none" marker-end="url(#arrTO)"/>
+        <text class="label-amber label-sub" x="480" y="195" text-anchor="middle">≥ 3</text>
+
+        <g>
+          <rect class="node-teal" x="370" y="320" width="270" height="58" rx="8" stroke-width="0.5"/>
+          <text class="label-teal label-title" x="505" y="342" text-anchor="middle">Yes · prioritize silent agent</text>
+          <text class="label-teal label-sub" x="505" y="360" text-anchor="middle">→ Pick longest-silent persona</text>
+          <text class="label-teal label-sub" x="505" y="374" text-anchor="middle">Fair airtime</text>
+        </g>
+        <line x1="505" y1="278" x2="505" y2="318" class="arr-success" marker-end="url(#arrTO)"/>
+        <text class="label-teal label-sub" x="525" y="302">Yes</text>
+
+        <g>
+          <rect class="node-amber" x="260" y="430" width="240" height="58" rx="8" stroke-width="0.5"/>
+          <text class="label-amber label-title" x="380" y="452" text-anchor="middle">Check 3 · Keyword triggers</text>
+          <text class="label-amber label-sub" x="380" y="470" text-anchor="middle">TAM, DORA, burn,</text>
+          <text class="label-amber label-sub" x="380" y="484" text-anchor="middle">portfolio in response?</text>
+        </g>
+        <path d="M 505 378 L 410 428" class="arr" fill="none" marker-end="url(#arrTO)"/>
+        <text class="label-amber label-sub" x="475" y="405" text-anchor="middle">No</text>
+
+        <g>
+          <rect class="node-coral" x="40" y="540" width="280" height="78" rx="8" stroke-width="0.5"/>
+          <text class="label-coral label-title" x="180" y="562" text-anchor="middle">Match · route to persona</text>
+          <text class="label-coral label-sub" x="180" y="582" text-anchor="middle">TAM/comp/market → Skeptic</text>
+          <text class="label-coral label-sub" x="180" y="596" text-anchor="middle">burn/hire/ship → Operator</text>
+          <text class="label-coral label-sub" x="180" y="610" text-anchor="middle">DORA/AI Act/MHRA → Regulator</text>
+          <text class="label-coral label-sub" x="180" y="624" text-anchor="middle">portfolio/conflict → Lens</text>
+        </g>
+        <path d="M 280 488 L 180 538" class="arr-danger" fill="none" marker-end="url(#arrTO)"/>
+        <text class="label-coral label-sub" x="250" y="515" text-anchor="middle">Match</text>
+
+        <g>
+          <rect class="node-teal" x="400" y="540" width="280" height="58" rx="8" stroke-width="0.5"/>
+          <text class="label-teal label-title" x="540" y="562" text-anchor="middle">Check 4 · Round-robin</text>
+          <text class="label-teal label-sub" x="540" y="580" text-anchor="middle">+ 20% randomness · avoid patterns</text>
+        </g>
+        <path d="M 480 488 L 540 538" class="arr-success" fill="none" marker-end="url(#arrTO)"/>
+        <text class="label-teal label-sub" x="525" y="515" text-anchor="middle">No match</text>
+
+        <g>
+          <rect class="node-gray" x="260" y="680" width="200" height="48" rx="8" stroke-width="0.5"/>
+          <text class="label-gray label-title" x="360" y="702" text-anchor="middle">Selected agent speaks</text>
+          <text class="label-gray label-sub" x="360" y="720" text-anchor="middle">Stream · increment turn</text>
+        </g>
+        <line x1="150" y1="278" x2="280" y2="680" class="arr" marker-end="url(#arrTO)" stroke-dasharray="2 3"/>
+        <line x1="505" y1="378" x2="380" y2="678" class="arr" marker-end="url(#arrTO)" stroke-dasharray="2 3"/>
+        <line x1="180" y1="618" x2="320" y2="680" class="arr" marker-end="url(#arrTO)"/>
+        <line x1="540" y1="598" x2="400" y2="680" class="arr" marker-end="url(#arrTO)"/>
+      </svg>
+      <div class="visual-caption">Figure · Turn orchestrator · four-check decision tree · evasion detection first</div>
+    </div>
+
+    <h3>Session end logic</h3>
+    <p>Three triggers, evaluated after each turn. Turn count ≥ 12 forces a hard end. Time ≥ 18:00 forces a time cap. Turn count ≥ 8 with all four personas having spoken at least once and elapsed ≥ 15:00 triggers a soft end. User can manually click "I'm done" at any time.</p>
+  </section>
+
+  <section id="room">
+    <div class="section-eyebrow">10 · IC Room states</div>
+    <h2>Live committee view · two display modes</h2>
+    <p>The IC Room is the screen the user spends most of their time on. Card view shows live committee state — active speaker highlighted, queued members preview what they're considering. Transcript view shows the full conversation as a chat log. User toggles between them; both render from the same turn array.</p>
+
+    <div class="visual">
+      <div class="wf-window">
+        <div class="ic-header">
+          <div>
+            <div class="ic-eyebrow">IC session · TORTUS AI</div>
+            <div class="ic-title">Seed · £15M post-money cap · 91-day catalyst window</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="ic-timer">12:34 / 18:00</span>
+            <span style="color: var(--muted); font-size: 18px;">×</span>
+          </div>
+        </div>
+        <div class="ic-body">
+          <div class="ic-brief">
+            <div class="ic-brief-label">Brief · TORTUS AI</div>
+            <div class="ic-brief-row"><span>SSI</span><span>82</span></div>
+            <div class="ic-brief-row"><span>Stage</span><span>Seed</span></div>
+            <div class="ic-brief-row"><span>Sector</span><span>Healthcare AI</span></div>
+            <div class="ic-brief-row"><span>Catalyst</span><span>91 days</span></div>
+            <div class="ic-brief-row"><span>Priority</span><span>P0</span></div>
+            <div style="margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.5;">AI clinical documentation writing into EHRs. NHS DTAC compliant. MHRA Class IIa. 3,500+ GP practices via X-on Health.</div>
+          </div>
+
+          <div class="ic-committee">
+            <div class="ic-member">
+              <div class="ic-member-head">
+                <span class="ic-member-name">The Skeptic</span>
+                <span class="ic-member-status">Listening</span>
+              </div>
+              <div class="ic-member-msg">Heidi just raised $19M Series A from Sequoia in March. They're flush. Your moat argument needs to survive 18 months of Heidi spending.</div>
+            </div>
+            <div class="ic-member active">
+              <div class="ic-member-head">
+                <span class="ic-member-name active-name">The Regulatory Hawk</span>
+                <span class="ic-member-status speaking">Speaking · now</span>
+              </div>
+              <div class="ic-member-msg active-msg">You answered the Skeptic with "Class IIa is harder than Class I." That's true but incomplete. Class IIa requires post-market surveillance under MDR Article 83 — TORTUS has 24 people. Walk me through who runs vigilance reporting when the X-on Health rollout doubles the active install base.</div>
+            </div>
+            <div class="ic-member">
+              <div class="ic-member-head">
+                <span class="ic-member-name">The Operator</span>
+                <span class="ic-member-status">
+                  <span class="typing-dots"><span></span><span></span><span></span></span>
+                  Drafting
+                </span>
+              </div>
+              <div class="ic-member-msg placeholder">Reviewing your burn answer from turn 3 · preparing a follow-up on the £4.2M Khosla round runway…</div>
+            </div>
+            <div class="ic-member">
+              <div class="ic-member-head">
+                <span class="ic-member-name">The Portfolio Lens</span>
+                <span class="ic-member-status">Queued</span>
+              </div>
+              <div class="ic-member-msg placeholder">Considering whether TORTUS conflicts with Tandem Health (SSI 86, also healthcare workflow)…</div>
+            </div>
+          </div>
+        </div>
+        <div class="ic-input">
+          <div class="ic-input-label">Your response · turn 8 of ~12</div>
+          <div class="ic-input-text">Post-market surveillance is handled by our Head of Clinical Safety (ex-MHRA), supported by an automated event-capture pipeline. At 3,500 practices we have ~9 device incidents per quarter — Class IIa requires reporting within 15 days for serious incidents, 30 for non-serious. We've reported all 4 so far in median 6 days…</div>
+          <div class="ic-input-footer">
+            <span class="ic-hint">⏎ submit · Shift+⏎ newline · 247 / 800 chars</span>
+            <span class="btn-vermillion">Submit →</span>
+          </div>
+        </div>
+      </div>
+      <div class="visual-caption">Wireframe · IC Room card view · Regulator speaking · Operator drafting · TORTUS-specific</div>
+    </div>
+
+    <div class="visual">
+      <div class="wf-window">
+        <div class="ic-header">
+          <div>
+            <div class="ic-eyebrow">IC session · TORTUS AI</div>
+            <div class="ic-title">Transcript view · same session</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="ic-timer">12:34 / 18:00</span>
+            <span style="color: var(--muted); font-size: 18px;">×</span>
+          </div>
+        </div>
+        <div class="tab-nav">
+          <span class="tab">Live</span>
+          <span class="tab active">Transcript</span>
+        </div>
+        <div class="transcript">
+          <div class="transcript-turn">
+            <div class="transcript-speaker">The Skeptic · turn 1</div>
+            <div>You're proposing a £15M post-money cap on a UK seed-stage clinical documentation tool. Heidi did $200M+ ARR last year and is free for individual clinicians. Walk me through who pays TORTUS and why they wouldn't just standardise on Heidi.</div>
+          </div>
+          <div class="transcript-turn">
+            <div class="transcript-speaker user">You · turn 2</div>
+            <div>Heidi monetises clinics, not individual clinicians — the free tier is acquisition. TORTUS's wedge is institutional procurement: NHS Trusts and HMOs that need Class IIa certification to integrate writes into the EHR. Heidi is Class I, which doesn't permit write-back.</div>
+          </div>
+          <div class="transcript-turn">
+            <div class="transcript-speaker">The Skeptic · turn 3</div>
+            <div>Heidi just raised $19M Series A from Sequoia in March. They're flush. Your moat argument needs to survive 18 months of Heidi spending — what's the moat in 12 months if Heidi upgrades to Class IIa?</div>
+          </div>
+          <div class="transcript-turn">
+            <div class="transcript-speaker user">You · turn 4</div>
+            <div>Class IIa upgrade is 14-18 months minimum because of MDR clinical evidence requirements. By that window, TORTUS will have 18 months of post-market surveillance data on UK Trusts and the X-on Health pipeline locked in. Switching cost isn't the certification — it's the integration into EHR write workflows that takes 3-4 months per Trust.</div>
+          </div>
+          <div class="transcript-turn">
+            <div class="transcript-speaker">The Regulatory Hawk · turn 5</div>
+            <div>You answered the Skeptic with "Class IIa is harder than Class I." That's true but incomplete. Class IIa requires post-market surveillance under MDR Article 83 — TORTUS has 24 people. Walk me through who runs vigilance reporting when X-on Health doubles the install base.</div>
+          </div>
+        </div>
+        <div style="padding: 10px 14px 14px; display: flex; justify-content: space-between; align-items: center;">
+          <span class="ic-hint" style="font-family: var(--mono); font-size: 10px;">5 turns · 2 personas have spoken · transcript auto-saves</span>
+          <div style="display: flex; gap: 6px;">
+            <span class="btn-secondary" style="font-size: 11px;">Search…</span>
+            <span class="btn-secondary" style="font-size: 11px;">Copy</span>
+          </div>
+        </div>
+      </div>
+      <div class="visual-caption">Wireframe · IC Room transcript view · same data, chat-log format</div>
+    </div>
+  </section>
+
+  <section id="voice">
+    <div class="section-eyebrow">11 · Voice mode</div>
+    <h2>Phase 2 input · Phase 3 full voice</h2>
+    <p>Voice is not MVP. Text round-trip is ~3s per turn; voice round-trip is 5-8s. That breaks the pressure dynamic. Phase 2 adds push-to-talk input (Whisper, fast, cheap) while keeping agent responses as text. Phase 3 adds ElevenLabs TTS for paid tier — four distinct voices, gated to €15/month subscribers.</p>
+
+    <div class="visual">
+      <div class="wf-window">
+        <div class="ic-header">
+          <div>
+            <div class="ic-eyebrow">IC session · TORTUS AI · voice mode</div>
+            <div class="ic-title">Seed · £15M post-money cap</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="pill pill-danger">🎙 Voice on</span>
+            <span class="ic-timer">14:08 / 18:00</span>
+            <span style="color: var(--muted); font-size: 18px;">×</span>
+          </div>
+        </div>
+        <div class="ic-body">
+          <div class="ic-brief">
+            <div class="ic-brief-label">Brief</div>
+            <div class="ic-brief-row"><span>SSI</span><span>82</span></div>
+            <div class="ic-brief-row"><span>Stage</span><span>Seed</span></div>
+            <div class="ic-brief-row"><span>Sector</span><span>Healthcare AI</span></div>
+          </div>
+          <div class="ic-committee">
+            <div class="ic-member active">
+              <div class="ic-member-head">
+                <span class="ic-member-name active-name">The Operator</span>
+                <span class="ic-member-status speaking">Speaking · now</span>
+              </div>
+              <div class="ic-member-msg active-msg">£4.2M from Khosla plus the £3.6M MHRA programme funding gives you ~£7M effective runway. What's the next 12 months of hiring and how does that change the burn curve?</div>
+            </div>
+          </div>
+        </div>
+        <div class="voice-circle-wrap">
+          <div style="text-align: center;">
+            <div class="voice-circle">🎙</div>
+            <div class="voice-status">Recording · 8s</div>
+            <div class="voice-waveform">
+              <div class="voice-bar" style="height: 12px;"></div>
+              <div class="voice-bar" style="height: 24px;"></div>
+              <div class="voice-bar" style="height: 18px;"></div>
+              <div class="voice-bar" style="height: 32px;"></div>
+              <div class="voice-bar" style="height: 28px;"></div>
+              <div class="voice-bar" style="height: 14px;"></div>
+              <div class="voice-bar" style="height: 36px;"></div>
+              <div class="voice-bar" style="height: 22px;"></div>
+              <div class="voice-bar" style="height: 18px;"></div>
+            </div>
+            <div class="voice-help">Hold space to record · release to send</div>
+          </div>
+        </div>
+      </div>
+      <div class="visual-caption">Wireframe · Voice mode UI · push-to-talk · agent response remains text-streamed</div>
+    </div>
+  </section>
+
+  <section id="mid">
+    <div class="section-eyebrow">12 · Mid-session states</div>
+    <h2>Pause and timeout</h2>
+    <p>Two states the user will encounter. Pause/exit modal triggers on close-button click — session state is in-memory in MVP, so leaving means losing the session. Timeout warning appears at 16 minutes with a soft option to wrap up; the rubric rewards proactive risk surfacing in the closing turn.</p>
+
+    <div class="visual" style="background: var(--warm-white); padding: 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px;">
+        <div>
+          <div class="modal-backdrop">
+            <div class="modal-card">
+              <div class="modal-title">Leave the IC?</div>
+              <div class="modal-body">You're 8 turns into your TORTUS AI defense. Leaving now means losing the session — there's no auto-save in Phase 1. The judge needs the full transcript to score.</div>
+              <div class="modal-actions">
+                <span class="btn-secondary">Stay in session</span>
+                <span style="background: var(--vermillion); color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;">Leave and lose</span>
+              </div>
+            </div>
+          </div>
+          <div class="visual-caption" style="margin-top: 10px;">Pause / exit modal</div>
+        </div>
+        <div>
+          <div class="modal-backdrop">
+            <div class="modal-card">
+              <div class="modal-title">2 minutes remaining</div>
+              <div class="modal-body">You've used 16 of 18 minutes. The judge will run automatically at 18:00 even if the committee hasn't finished. Strong defenses use the last 2 minutes to surface a top risk proactively — the rubric rewards it.</div>
+              <div class="modal-actions">
+                <span class="btn-secondary">Wrap up · score</span>
+                <span class="btn-primary">Continue</span>
+              </div>
+            </div>
+          </div>
+          <div class="visual-caption" style="margin-top: 10px;">Timeout warning at 16:00</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="report">
+    <div class="section-eyebrow">13 · Post-IC report</div>
+    <h2>The scored output</h2>
+    <p>The score is what gets shared. Bigger than the company name. Three colors deliberately: green for the strongest dimension, warning amber for the weakest, neutral for the middle. The eye is drawn to where the work is.</p>
+
+    <div class="visual">
+      <div class="wf-window">
+        <div class="rep-hero">
+          <div>
+            <div class="rep-meta-eyebrow">IC report · session 19 May 2026 · 17:42 duration</div>
+            <div class="rep-meta-title">TORTUS AI — Seed defense</div>
+            <div class="rep-meta-sub">11 exchanges · 4 committee members · pulled from Notion Dealflow</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="rep-score-num">38</div>
+            <div class="rep-score-total">/ 50</div>
+            <div class="rep-verdict">Would invest</div>
+          </div>
+        </div>
+        <div class="rep-rubric">
+          <div class="rep-rubric-row"><div style="font-size: 13px;">Conviction clarity</div><div class="rep-rubric-bar"><div class="rep-rubric-fill" style="width: 80%; background: var(--ink);"></div></div><div class="rep-rubric-score">8/10</div></div>
+          <div class="rep-rubric-row"><div style="font-size: 13px;">Risk acknowledgment</div><div class="rep-rubric-bar"><div class="rep-rubric-fill" style="width: 60%; background: var(--amber-text);"></div></div><div class="rep-rubric-score">6/10</div></div>
+          <div class="rep-rubric-row"><div style="font-size: 13px;">Data density</div><div class="rep-rubric-bar"><div class="rep-rubric-fill" style="width: 70%; background: var(--ink);"></div></div><div class="rep-rubric-score">7/10</div></div>
+          <div class="rep-rubric-row"><div style="font-size: 13px;">Thesis alignment</div><div class="rep-rubric-bar"><div class="rep-rubric-fill" style="width: 90%; background: var(--green-text);"></div></div><div class="rep-rubric-score">9/10</div></div>
+          <div class="rep-rubric-row"><div style="font-size: 13px;">Poise under pressure</div><div class="rep-rubric-bar"><div class="rep-rubric-fill" style="width: 80%; background: var(--ink);"></div></div><div class="rep-rubric-score">8/10</div></div>
+        </div>
+        <div class="rep-feedback">
+          <div>
+            <h4>Strengths</h4>
+            <ul style="list-style: none;">
+              <li><span style="color: var(--green-text); font-family: var(--mono);">→</span> Strong Vertical SoR thesis articulation · held institutional procurement wedge against Heidi pressure</li>
+              <li><span style="color: var(--green-text); font-family: var(--mono);">→</span> Specific Class IIa incident reporting data (4 reports, median 6 days)</li>
+              <li><span style="color: var(--green-text); font-family: var(--mono);">→</span> Acknowledged 14-18 month Heidi upgrade window without overstating moat</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Gaps to address</h4>
+            <ul style="list-style: none;">
+              <li><span style="color: var(--vermillion); font-family: var(--mono);">→</span> Did not proactively name Epic/Cerner native-AI risk before Portfolio Lens raised it</li>
+              <li><span style="color: var(--vermillion); font-family: var(--mono);">→</span> £15M post-money justification was qualitative · no comp set referenced</li>
+              <li><span style="color: var(--vermillion); font-family: var(--mono);">→</span> GP-vs-hospital go-to-market sequencing conflated · Operator surfaced this twice</li>
+            </ul>
+          </div>
+        </div>
+        <div style="padding: 14px 28px; border-top: 0.5px solid var(--hairline); display: flex; gap: 8px; background: var(--warm-white);">
+          <span class="btn-primary">Download PDF</span>
+          <span class="btn-secondary">View transcript</span>
+          <span class="btn-secondary">Run again · same deal</span>
+          <span class="btn-secondary">Share publicly</span>
+        </div>
+      </div>
+      <div class="visual-caption">Wireframe · Post-IC report · TORTUS-specific feedback · 38/50 verdict</div>
+    </div>
+  </section>
+
+  <section id="mobile">
+    <div class="section-eyebrow">14 · Mobile breakpoints</div>
+    <h2>375px wide · three core screens</h2>
+    <p>Most candidates run sessions on phones during commutes and lunch breaks. The desktop split-screen does not survive on mobile: the deal brief becomes a collapsible drawer accessed from the top bar, the committee feed scrolls vertically with the active speaker pinned to the top, the text input takes the bottom third. Voice mode is more usable on mobile than desktop — tap-and-hold the circle.</p>
+
+    <div class="visual">
+      <div class="mobile-triptych">
+        <div>
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <div class="phone-status"><span>9:41</span><span>•••</span></div>
+              <div class="phone-content">
+                <div class="m-landing-eyebrow">ic-sim.anefi.vc</div>
+                <div class="m-landing-title">Defend a deal.<br/>Twelve minutes.</div>
+                <div class="m-landing-sub">Four AI partners. One scored rubric. Built around your live Notion pipeline.</div>
+                <div class="m-tabs">
+                  <div class="m-tab active">Paste</div>
+                  <div class="m-tab">Sample</div>
+                  <div class="m-tab">Notion</div>
+                </div>
+                <div class="m-field">Company name</div>
+                <div class="m-field">Stage / ask</div>
+                <div class="m-field" style="min-height: 60px;">Deal description…</div>
+                <div class="m-cta">Enter the room →</div>
+                <div style="font-family: var(--mono); font-size: 7px; color: var(--muted); text-align: center; margin-top: 8px;">~18 min · no login · free</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-caption">Mobile · Landing</div>
+        </div>
+        <div>
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <div class="phone-status"><span>9:41</span><span>•••</span></div>
+              <div class="phone-content">
+                <div class="m-header">
+                  <div>
+                    <div class="m-eyebrow">IC · TORTUS AI</div>
+                    <div class="m-title">Seed · 82</div>
+                  </div>
+                  <div class="m-timer">14:08</div>
+                </div>
+                <div class="m-brief-drawer">
+                  <span style="color: var(--muted);">Brief</span>
+                  <span>Tap to expand ▾</span>
+                </div>
+                <div class="m-member m-active">
+                  <div class="m-member-name" style="color: var(--vermillion);">Regulator</div>
+                  <div class="m-member-msg">Post-market surveillance at 3,500 sites — who handles MDR Article 83 reporting? You have 24 people.</div>
+                </div>
+                <div class="m-member">
+                  <div class="m-member-name">Operator</div>
+                  <div class="m-member-msg placeholder">Drafting on burn…</div>
+                </div>
+                <div class="m-member">
+                  <div class="m-member-name">Skeptic</div>
+                  <div class="m-member-msg placeholder">Queued</div>
+                </div>
+                <div class="m-input">
+                  <div class="m-input-text" style="font-size: 9px;">Your response…</div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <span style="font-family: var(--mono); font-size: 7px; color: var(--muted);">🎙 voice</span>
+                    <span style="background: var(--vermillion); color: white; font-size: 9px; padding: 3px 10px; border-radius: 5px;">Send</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-caption">Mobile · IC Room</div>
+        </div>
+        <div>
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <div class="phone-status"><span>9:41</span><span>•••</span></div>
+              <div class="phone-content">
+                <div class="m-rep-hero">
+                  <div>
+                    <div class="m-rep-meta">Session 19 May</div>
+                    <div class="m-rep-title">TORTUS AI</div>
+                    <div class="m-rep-meta" style="margin-top: 2px;">11 turns · 17:42</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div class="m-rep-score">38</div>
+                    <div style="font-family: var(--mono); font-size: 9px; color: var(--muted);">/ 50</div>
+                    <div class="m-rep-verdict">Invest</div>
+                  </div>
+                </div>
+                <div style="padding-top: 8px;">
+                  <div class="m-rubric-row"><div>Conviction</div><div class="m-rubric-bar"><div class="m-rubric-fill" style="width: 80%;"></div></div><div class="m-rubric-score">8</div></div>
+                  <div class="m-rubric-row"><div>Risk</div><div class="m-rubric-bar"><div class="m-rubric-fill" style="width: 60%; background: var(--amber-text);"></div></div><div class="m-rubric-score">6</div></div>
+                  <div class="m-rubric-row"><div>Data</div><div class="m-rubric-bar"><div class="m-rubric-fill" style="width: 70%;"></div></div><div class="m-rubric-score">7</div></div>
+                  <div class="m-rubric-row"><div>Thesis</div><div class="m-rubric-bar"><div class="m-rubric-fill" style="width: 90%; background: var(--green-text);"></div></div><div class="m-rubric-score">9</div></div>
+                  <div class="m-rubric-row"><div>Poise</div><div class="m-rubric-bar"><div class="m-rubric-fill" style="width: 80%;"></div></div><div class="m-rubric-score">8</div></div>
+                </div>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 0.5px solid var(--hairline);">
+                  <div style="font-family: var(--mono); font-size: 7px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Top gap</div>
+                  <div style="font-size: 9px; line-height: 1.4;">Did not proactively name Epic/Cerner native-AI risk before Portfolio Lens raised it.</div>
+                </div>
+                <div style="margin-top: 10px; background: var(--ink); color: white; text-align: center; padding: 7px; border-radius: 6px; font-size: 10px; font-weight: 500;">Download PDF</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-caption">Mobile · Report</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="triggers">
+    <div class="section-eyebrow">15 · Triggering surfaces</div>
+    <h2>Three ways IC Sim is triggered</h2>
+    <p>The same engine serves three surfaces, each with a different purpose. The web product is the public artifact and the canonical version. The personal skill is the private rehearsal mode running inline in Claude chat. The shared link surface is what propagates the product organically.</p>
+
+    <div class="triggers-grid">
+      <div class="trigger-card">
+        <div class="trigger-icon">Surface 1</div>
+        <div class="trigger-name">Public web product</div>
+        <div class="trigger-desc">The canonical experience. Mobile-first, polished UI, full agent committee, scored PDF. What gets shared on LinkedIn and Substack. What investors and candidates see when they hear about it.</div>
+        <div class="trigger-list">
+          <div class="trigger-list-item">→ ic-sim.anefi.vc</div>
+          <div class="trigger-list-item">→ anefi.vc home CTA</div>
+          <div class="trigger-list-item">→ Substack essay embed</div>
+          <div class="trigger-list-item">→ LinkedIn launch post</div>
+        </div>
+      </div>
+      <div class="trigger-card">
+        <div class="trigger-icon">Surface 2</div>
+        <div class="trigger-name">Personal skill (private)</div>
+        <div class="trigger-desc">Runs inline in your Claude chat alongside deal-memo, market-map, signal-sourcing. No UI. Pulls deal from Notion, conducts the session as conversation, produces the scored output as a Notion page. For your own prep before real interviews.</div>
+        <div class="trigger-list">
+          <div class="trigger-list-item">→ /ic-sim TORTUS AI</div>
+          <div class="trigger-list-item">→ "run an IC simulation"</div>
+          <div class="trigger-list-item">→ "practice defending [deal]"</div>
+          <div class="trigger-list-item">→ Notion DB write-back</div>
+        </div>
+      </div>
+      <div class="trigger-card">
+        <div class="trigger-icon">Surface 3</div>
+        <div class="trigger-name">Shared result links</div>
+        <div class="trigger-desc">When someone shares an IC Sim result, the URL takes the viewer to the scored report with a clear "Run your own" CTA. This is the viral loop: every shared result is a recruitment touchpoint for new users.</div>
+        <div class="trigger-list">
+          <div class="trigger-list-item">→ /r/[slug] result page</div>
+          <div class="trigger-list-item">→ OG image preview</div>
+          <div class="trigger-list-item">→ "Try with your own deal"</div>
+          <div class="trigger-list-item">→ Score badge embed</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Phase 2 unification</h3>
+    <p>In Phase 2, the skill gains a <code>share</code> flag: <code>/ic-sim TORTUS share</code> runs the simulation inline, scores it, and generates a public-readable URL on the web product with the transcript pre-populated. One command, both surfaces.</p>
+  </section>
+
+  <section id="roadmap">
+    <div class="section-eyebrow">16 · Build roadmap</div>
+    <h2>Two-week MVP, then iterate</h2>
+    <div class="timeline">
+      <div class="timeline-week">
+        <div class="timeline-tag">Week 1</div>
+        <div class="timeline-content">
+          <h4>Foundation + Notion + brief</h4>
+          <p>Next.js 15 scaffolding, Tailwind v4, design system. Four agent system prompts written and tested manually against TORTUS. Notion MCP integration: OAuth, dealflow query, page fetch, brief generator LLM call, caching layer. Web search enrichment endpoint. Detailed brief view UI. IC room UI scaffolding (desktop + mobile).</p>
+        </div>
+      </div>
+      <div class="timeline-week">
+        <div class="timeline-tag">Week 2</div>
+        <div class="timeline-content">
+          <h4>Orchestrator + judge + ship</h4>
+          <p>Orchestrator logic with evasion detection (Haiku call), silence detection, keyword triggers, round-robin. Streaming API endpoint (SSE), token-by-token rendering. Judge agent with rubric scoring. Post-IC report UI, PDF export. Mobile polish. End-to-end testing on TORTUS, Deeploy, Numalis, Alinia, Noteless. Deploy to ic-sim.anefi.vc.</p>
+        </div>
+      </div>
+      <div class="timeline-week">
+        <div class="timeline-tag">Week 3</div>
+        <div class="timeline-content">
+          <h4>Launch + iterate</h4>
+          <p>Public launch: Substack essay, LinkedIn post, X thread, OG image with TORTUS sample run. Direct outreach to MBA programs, analyst contacts at target funds. Iterate on user feedback. Watch for: completion rate, score distribution, share rate.</p>
+        </div>
+      </div>
+      <div class="timeline-week">
+        <div class="timeline-tag">Week 4 +</div>
+        <div class="timeline-content">
+          <h4>Phase 2 features</h4>
+          <p>Voice input (Whisper). Session history (Vercel KV opt-in). Public shareable URLs. Fund-specific IC styles. Personal skill integration with /share flag. Targeted fact-check mid-turn for specific claims.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>IC Sim · Design document · canonical · Sevda Anefi · 19 May 2026 · See <code>ic-sim-prd.md</code> for PRD and <code>ic-sim-build-prompt.md</code> for Claude Code build instructions.</p>
+  </footer>
+
+</div>
+</body>
+</html>
