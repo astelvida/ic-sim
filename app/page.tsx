@@ -1,5 +1,5 @@
-import { DealPicker } from "@/components/DealPicker";
 import { DealsList } from "@/components/DealsList";
+import { SampleDeal } from "@/components/SampleDeal";
 
 export default function Home() {
   return (
@@ -20,8 +20,9 @@ export default function Home() {
             Brief
           </div>
           <p className="text-[13px] leading-relaxed text-bone-dim">
-            Four AI committee members. One deal. Ten turns. A scored transcript at the end.
-            Built for analysts and principals who want reps before the real thing.
+            Four AI committee members. One deal. Eight to twelve turns. A scored
+            transcript at the end. Built for analysts and principals who want reps
+            before the real thing.
           </p>
         </div>
       </header>
@@ -33,38 +34,38 @@ export default function Home() {
         <ol className="space-y-3 max-w-3xl">
           <li className="flex gap-6">
             <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral pt-1 w-24 shrink-0">
-              01 · Brief
+              01 · Pick
             </span>
             <span className="text-[14px] leading-relaxed text-bone-dim">
-              Run <code className="text-bone">/ic-brief</code> in Claude Code on a Notion deal page or pasted text. It returns a one-page JSON brief.
+              Run the worked sample below, or pick a live deal from your Notion
+              pipeline.
             </span>
           </li>
           <li className="flex gap-6">
             <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral pt-1 w-24 shrink-0">
-              02 · Paste
+              02 · Defend
             </span>
             <span className="text-[14px] leading-relaxed text-bone-dim">
-              Drop the JSON below. You&rsquo;ll walk into a live room with four AI partners staring back.
+              The committee enriches the deal into a memo-depth brief, then four AI
+              partners interrogate it across eight to twelve turns.
             </span>
           </li>
           <li className="flex gap-6">
             <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral pt-1 w-24 shrink-0">
-              03 · Defend
+              03 · Score
             </span>
             <span className="text-[14px] leading-relaxed text-bone-dim">
-              Ten turns. Sentiment tracked per member. A scored rubric and PDF when the gavel drops.
+              A judge grades you on a five-dimension rubric. Export the transcript as a
+              PDF, or share the result.
             </span>
           </li>
         </ol>
       </section>
 
-      <div className="pt-8">
+      <section className="pt-16 space-y-10 flex-1">
+        <SampleDeal />
         <DealsList />
-      </div>
-
-      <div className="flex-1 flex items-start pt-16">
-        <DealPicker />
-      </div>
+      </section>
 
       <footer className="mt-24 pt-6 border-t hairline flex items-center justify-between mono text-[10px] tracking-[0.22em] uppercase text-neutral">
         <div>IC-SIM · Engine</div>

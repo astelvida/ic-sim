@@ -94,15 +94,17 @@ export async function POST(req: Request) {
           : []),
       ],
       messages,
-      // Server-side web search: members can verify TAM claims, regulatory citations,
-      // competitor moves, recent funding rounds — and incorporate findings into the
-      // final text block. The browser only consumes text_delta events, so search-result
-      // blocks pass through invisibly.
+      // Server-side web search, capped at a single use per turn. Each search
+      // adds 5-10s of latency before any text streams, so the committee leans
+      // on the already-enriched brief and reserves its one search for a genuine
+      // fact-check (a fresh funding round, a regulatory change). The browser
+      // only consumes text_delta events, so search-result blocks pass through
+      // invisibly.
       tools: [
         {
           type: "web_search_20250305",
           name: "web_search",
-          max_uses: 3,
+          max_uses: 1,
           cache_control: { type: "ephemeral" },
         } as unknown as never,
       ],
