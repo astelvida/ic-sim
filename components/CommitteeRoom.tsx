@@ -44,6 +44,10 @@ export function CommitteeRoom() {
   const [finalizing, setFinalizing] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
   const [finalTurnsForRetry, setFinalTurnsForRetry] = useState<Turn[] | null>(null);
+  // Set when a committee turn (including the kickoff) fails before any text
+  // streams — e.g. /api/turn returns a 502 because the API key is invalid.
+  // Surfaced as a banner with a Retry button so the room never freezes silently.
+  const [turnError, setTurnError] = useState<string | null>(null);
   // Which conversation surface is showing. Local state — not persisted; a
   // refresh returns to the Live view, which is the right default.
   const [viewMode, setViewMode] = useState<ViewMode>("live");
@@ -56,6 +60,10 @@ export function CommitteeRoom() {
   const turnAbort = useRef<AbortController | null>(null);
   const scoreAbort = useRef<AbortController | null>(null);
   const pickAbort = useRef<AbortController | null>(null);
+  // The args of the most recent runMember call, so the Retry button can replay it.
+  const lastTurnArgs = useRef<{ memberId: MemberId; snapshot: Turn[]; reaskOf?: string } | null>(
+    null,
+  );
 
   // Abort any in-flight requests on unmount (e.g. user navigates back mid-stream)
   useEffect(() => {
@@ -94,6 +102,8 @@ export function CommitteeRoom() {
     async (memberId: MemberId, turnsSnapshot: Turn[], reaskOf?: string) => {
       setActiveMember(memberId);
       setStreaming(true);
+      setTurnError(null);
+      lastTurnArgs.current = { memberId, snapshot: turnsSnapshot, reaskOf };
 
       // Abort any prior in-flight turn before starting this one.
       turnAbort.current?.abort();
@@ -109,6 +119,19 @@ export function CommitteeRoom() {
           body: JSON.stringify({ memberId, brief, turns: turnsSnapshot, reaskOf }),
           signal: controller.signal,
         });
+        if (!res.ok) {
+          // /api/turn failed before streaming (e.g. a 502 from a bad API key).
+          // Read the JSON error so the room can show why, instead of treating
+          // the error body as committee speech.
+          let detail = `committee turn failed (HTTP ${res.status})`;
+          try {
+            const j = (await res.json()) as { error?: string };
+            if (j?.error) detail = j.error;
+          } catch {
+            // non-JSON body — keep the HTTP-status message
+          }
+          throw new Error(detail);
+        }
         if (!res.body) throw new Error("no stream body");
 
         // Push the placeholder ONLY after the fetch resolves successfully. If the
@@ -142,6 +165,8 @@ export function CommitteeRoom() {
         if (e instanceof Error && e.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : "stream error";
         if (placeholderAdded) updateLastMemberTurn(`[${msg}]`, "neutral");
+        // Surface the failure as a banner — the room must never freeze silently.
+        setTurnError(msg);
       } finally {
         setStreaming(false);
         setActiveMember(null);
@@ -149,6 +174,15 @@ export function CommitteeRoom() {
     },
     [brief, addTurn, updateLastMemberTurn]
   );
+
+  // Replay the most recent committee turn after a failure (e.g. once the user
+  // has fixed the API key and redeployed).
+  const retryTurn = useCallback(() => {
+    const args = lastTurnArgs.current;
+    if (!args) return;
+    setTurnError(null);
+    runMember(args.memberId, args.snapshot, args.reaskOf);
+  }, [runMember]);
 
   // Kickoff: first member question when session starts. Uses the SYNC orchestrator
   // because there's no prior presenter answer to evaluate for evasion.
@@ -333,6 +367,25 @@ export function CommitteeRoom() {
             warningDismissed.current = true;
           }}
         />
+
+        {turnError && (
+          <div className="border hairline-strong bg-[rgba(122,35,40,0.06)] p-4 mb-4 flex items-start justify-between gap-4">
+            <div className="min-w-0 text-[12.5px] text-bone-dim">
+              <span className="mono text-[10px] tracking-[0.18em] uppercase text-oxblood">
+                committee turn failed
+              </span>
+              <span className="ml-3">{turnError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={retryTurn}
+              disabled={streaming}
+              className="btn-solid disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* The conversation — both views render from the same `turns` array */}
         <div>

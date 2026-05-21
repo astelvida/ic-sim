@@ -66,14 +66,14 @@ export async function POST(req: Request) {
     });
   }
 
-  const client = getAnthropic();
   // System block + tools array are cached ephemerally. The persona prompt + briefContext
   // stays identical across all ~10 turns for a given member in a session, so the cache
   // breakpoint on the system block delivers ~90% input-cost reduction on hits (1.25x
   // write, 0.1x read). The brief is intentionally verbose enough (after the extension
   // in lib/committee.ts) to clear Sonnet 4.6's 1,024-token cacheability floor.
-  const stream = await withRetry(() =>
-    client.messages.create({
+  const createStream = () => {
+    const client = getAnthropic();
+    return client.messages.create({
       model: MODEL_ID,
       max_tokens: 1024,
       system: [
@@ -109,8 +109,29 @@ export async function POST(req: Request) {
         } as unknown as never,
       ],
       stream: true,
-    }),
-  );
+    });
+  };
+
+  // getAnthropic() or the upstream messages.create() can throw BEFORE any text
+  // streams — most commonly a missing or invalid ANTHROPIC_API_KEY (Anthropic
+  // returns HTTP 401). Without this guard the route throws a bare 500 with an
+  // empty body; the client reads an empty stream and the room silently shows
+  // nothing. Return a readable JSON error the room can surface instead.
+  let stream: Awaited<ReturnType<typeof createStream>>;
+  try {
+    stream = await withRetry(createStream);
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : "unknown error";
+    const isAuth = /\b401\b|authentication|x-api-key|api[_-]?key/i.test(raw);
+    return new Response(
+      JSON.stringify({
+        error: isAuth
+          ? "Anthropic API authentication failed (HTTP 401). The ANTHROPIC_API_KEY on this deployment is missing or invalid — set a valid key in the Vercel project settings and redeploy."
+          : `The committee turn failed upstream: ${raw}`,
+      }),
+      { status: 502, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
   const encoder = new TextEncoder();
   const body = new ReadableStream({
