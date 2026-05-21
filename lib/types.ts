@@ -36,6 +36,19 @@ export interface Comparable {
   note?: string;
 }
 
+// Live web-search enrichment, structured as the five named queries from
+// PRD §10.1 — funding / competitor pricing / regulatory status / incumbent
+// roadmap / comparables. `sourcedAt` is stamped server-side in /api/brief
+// (a real timestamp, never authored by the model).
+export interface Enrichment {
+  funding?: string;
+  competitorPricing?: string;
+  regulatoryStatus?: string;
+  incumbentRoadmap?: string;
+  comparables?: string;
+  sourcedAt?: string;
+}
+
 export interface Brief {
   // Existing core fields
   company: string;
@@ -65,6 +78,7 @@ export interface Brief {
   unitEconomics?: string;            // CAC, payback, gross margin, net retention
   keyQuestionsForIC?: string[];      // What the IC should pressure-test
   sources?: Source[];                // Citations gathered during generation
+  enrichment?: Enrichment;           // Structured live web-search findings (PRD §9.3)
 }
 
 export interface Turn {

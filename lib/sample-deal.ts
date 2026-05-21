@@ -90,4 +90,17 @@ export const SAMPLE_BRIEF: Brief = {
     "What is the GP-practice vs hospital-trust go-to-market sequence?",
     "How does a 24-person team run post-market surveillance at scale?",
   ],
+  enrichment: {
+    funding:
+      "Heidi Health raised a $19M Series A from Sequoia in March 2026; TORTUS has raised $8.5M total, including a $4.2M Seed led by Khosla in February 2024.",
+    competitorPricing:
+      "Nuance DAX is priced at roughly $200/clinician/month; Heidi runs a free individual-clinician tier as an acquisition wedge.",
+    regulatoryStatus:
+      "MHRA AI Airlock Phase 2 is active; the NHS has an estimated £80M FY2026 budget line for AI clinical documentation.",
+    incumbentRoadmap:
+      "Epic announced 'Smart Prompts' AI documentation in April 2026, with no general-availability date.",
+    comparables:
+      "Healthcare AI Series A rounds in 2026 are clearing an estimated ~$30M median post-money at roughly 8x ARR.",
+    sourcedAt: "2026-05-19T09:30:00.000Z",
+  },
 };

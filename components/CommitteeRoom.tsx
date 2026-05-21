@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { DealBrief } from "./DealBrief";
-import { MemberCard } from "./MemberCard";
+import { CommitteeLive } from "./CommitteeLive";
+import { TranscriptView } from "./TranscriptView";
 import { TranscriptInput } from "./TranscriptInput";
 import { SessionTimer } from "./SessionTimer";
 import { TimeoutWarning } from "./TimeoutWarning";
-import { COMMITTEE } from "@/lib/committee";
 import { pickNextMember, pickNextMemberSync, parseSentiment } from "@/lib/turn-router";
 import { useSession } from "@/lib/session-context";
 import {
@@ -18,6 +17,8 @@ import {
   isSoftEndAvailable,
 } from "@/lib/session-end";
 import type { MemberId, Turn } from "@/lib/types";
+
+type ViewMode = "live" | "transcript";
 
 export function CommitteeRoom() {
   const router = useRouter();
@@ -37,12 +38,15 @@ export function CommitteeRoom() {
   const [streaming, setStreaming] = useState(false);
   const [activeMember, setActiveMember] = useState<MemberId | null>(null);
   // True while the evasion classifier is in flight (between presenter submit
-  // and the next member starting to stream). Renders the "Committee is
-  // conferring…" indicator on the right rail.
+  // and the next member starting to stream). Renders the "Conferring…"
+  // indicator next to the view tabs.
   const [conferring, setConferring] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
   const [finalTurnsForRetry, setFinalTurnsForRetry] = useState<Turn[] | null>(null);
+  // Which conversation surface is showing. Local state — not persisted; a
+  // refresh returns to the Live view, which is the right default.
+  const [viewMode, setViewMode] = useState<ViewMode>("live");
   // Time-cap warning toast. Shown once when elapsed first crosses WARNING_MS;
   // user can dismiss early. `warningDismissed` ref prevents the interval from
   // re-showing after a manual dismiss.
@@ -273,130 +277,135 @@ export function CommitteeRoom() {
   if (!brief) return null;
 
   return (
-    <main className="min-h-dvh px-8 md:px-12 py-6 flex flex-col">
-      <header className="flex items-center justify-between mb-6 pb-4 border-b hairline">
-        <div className="flex items-baseline gap-5">
-          <div className="mono text-[10px] tracking-[0.3em] uppercase text-neutral">
-            IC · SIM — In Session
-          </div>
-          <div className="mono text-[10px] tracking-[0.2em] uppercase text-bone-dim">
-            Turn {String(Math.min(HARD_CAP_TURNS, memberTurns)).padStart(2, "0")} /{" "}
-            {String(HARD_CAP_TURNS).padStart(2, "0")}
-          </div>
-          {softEndAvailable && !finalizing && (
-            <div className="mono text-[9px] tracking-[0.22em] uppercase text-amber">
-              Soft end available
+    <main className="min-h-dvh px-6 md:px-10 py-6 flex flex-col">
+      <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col">
+        <header className="flex items-center justify-between mb-5 pb-4 border-b hairline">
+          <div className="flex items-baseline gap-5">
+            <div className="mono text-[10px] tracking-[0.3em] uppercase text-neutral">
+              IC · SIM — In Session
             </div>
+            <div className="mono text-[10px] tracking-[0.2em] uppercase text-bone-dim">
+              Turn {String(Math.min(HARD_CAP_TURNS, memberTurns)).padStart(2, "0")} /{" "}
+              {String(HARD_CAP_TURNS).padStart(2, "0")}
+            </div>
+            {softEndAvailable && !finalizing && (
+              <div className="mono text-[9px] tracking-[0.22em] uppercase text-amber">
+                Soft end available
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-6">
+            <SessionTimer startedAt={startedAt} endedAt={endedAt} />
+            <button className="btn-ghost" onClick={endNow} disabled={finalizing}>
+              {finalizing ? "Scoring…" : "End Session →"}
+            </button>
+          </div>
+        </header>
+
+        {/* Compact deal strip — full memo opens in a drawer */}
+        <DealBrief brief={brief} />
+
+        {/* Live / Transcript toggle */}
+        <div className="flex items-center gap-1 mb-5 border-b hairline">
+          <TabButton active={viewMode === "live"} onClick={() => setViewMode("live")}>
+            Live
+          </TabButton>
+          <TabButton
+            active={viewMode === "transcript"}
+            onClick={() => setViewMode("transcript")}
+          >
+            Transcript
+          </TabButton>
+          {conferring && (
+            <span className="mono text-[9px] tracking-[0.24em] uppercase text-amber animate-pulse ml-3">
+              Conferring…
+            </span>
+          )}
+          <span className="mono text-[9px] tracking-[0.2em] uppercase text-neutral ml-auto pb-2">
+            Committee — 4 Partners
+          </span>
+        </div>
+
+        <TimeoutWarning
+          visible={showWarning}
+          onDismiss={() => {
+            setShowWarning(false);
+            warningDismissed.current = true;
+          }}
+        />
+
+        {/* The conversation — both views render from the same `turns` array */}
+        <div>
+          {viewMode === "live" ? (
+            <CommitteeLive
+              turns={turns}
+              activeMember={activeMember}
+              streaming={streaming}
+              conferring={conferring}
+              sentimentByMember={sentimentByMember}
+            />
+          ) : (
+            <TranscriptView turns={turns} />
           )}
         </div>
-        <div className="flex items-center gap-8">
-          <SessionTimer startedAt={startedAt} endedAt={endedAt} />
-          <button className="btn-ghost" onClick={endNow} disabled={finalizing}>
-            {finalizing ? "Scoring…" : "End Session →"}
-          </button>
-        </div>
-      </header>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[58fr_42fr] gap-10">
-        {/* LEFT: brief + input + transcript */}
-        <section className="flex flex-col min-w-0">
-          <TimeoutWarning
-            visible={showWarning}
-            onDismiss={() => {
-              setShowWarning(false);
-              warningDismissed.current = true;
-            }}
-          />
-          <DealBrief brief={brief} />
-
-          <Transcript turns={turns} />
-
-          <div className="mt-auto pt-6 space-y-4">
-            {scoreError && (
-              <div className="border hairline-strong p-4 flex items-center justify-between gap-4">
-                <div className="text-[13px] text-bone-dim">
-                  <span className="mono text-[10px] tracking-[0.18em] uppercase text-oxblood">
-                    scoring failed
-                  </span>
-                  <span className="ml-3">{scoreError}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={retryScore}
-                  disabled={finalizing}
-                  className="btn-solid disabled:opacity-30"
-                >
-                  {finalizing ? "Retrying…" : "Retry scoring →"}
-                </button>
+        {/* Presenter input */}
+        <div className="mt-6 space-y-4">
+          {scoreError && (
+            <div className="border hairline-strong p-4 flex items-center justify-between gap-4">
+              <div className="text-[13px] text-bone-dim">
+                <span className="mono text-[10px] tracking-[0.18em] uppercase text-oxblood">
+                  scoring failed
+                </span>
+                <span className="ml-3">{scoreError}</span>
               </div>
-            )}
-            <TranscriptInput
-              disabled={streaming || finalizing}
-              onSubmit={handlePresenterSubmit}
-              brief={brief}
-              lastMemberQuestion={lastMemberQuestion}
-              placeholder={
-                presenterTurns === 0
-                  ? "Open with your thesis. Why is this a fund-returner?"
-                  : "Respond to the question. Use specific numbers."
-              }
-            />
-          </div>
-        </section>
-
-        {/* RIGHT: committee */}
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
-          <div className="flex items-baseline justify-between mb-1">
-            <div className="mono text-[10px] tracking-[0.24em] uppercase text-neutral">
-              Committee — 4 Partners
-            </div>
-            {conferring && (
-              <div className="mono text-[9px] tracking-[0.24em] uppercase text-amber animate-pulse">
-                Conferring…
-              </div>
-            )}
-          </div>
-          {COMMITTEE.map((m) => {
-            const memberTurnsForThis = turns.filter((t) => t.role === "member" && t.memberId === m.id);
-            const latest = memberTurnsForThis[memberTurnsForThis.length - 1] ?? null;
-            return (
-              <motion.div
-                key={m.id}
-                layout
-                transition={{ duration: 0.4, ease: [0.2, 0, 0, 1] }}
+              <button
+                type="button"
+                onClick={retryScore}
+                disabled={finalizing}
+                className="btn-solid disabled:opacity-30"
               >
-                <MemberCard
-                  member={m}
-                  sentiment={sentimentByMember[m.id]}
-                  isActive={activeMember === m.id}
-                  isStreaming={streaming && activeMember === m.id}
-                  lastTurn={latest}
-                  turnCount={memberTurnsForThis.length}
-                />
-              </motion.div>
-            );
-          })}
-        </aside>
+                {finalizing ? "Retrying…" : "Retry scoring →"}
+              </button>
+            </div>
+          )}
+          <TranscriptInput
+            disabled={streaming || finalizing}
+            onSubmit={handlePresenterSubmit}
+            brief={brief}
+            lastMemberQuestion={lastMemberQuestion}
+            placeholder={
+              presenterTurns === 0
+                ? "Open with your thesis. Why is this a fund-returner?"
+                : "Respond to the question. Use specific numbers."
+            }
+          />
+        </div>
       </div>
     </main>
   );
 }
 
-function Transcript({ turns }: { turns: Turn[] }) {
-  const presenterOnly = turns.filter((t) => t.role === "presenter");
-  if (presenterOnly.length === 0) return null;
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mt-6 border-t hairline pt-5">
-      <div className="mono text-[10px] tracking-[0.24em] uppercase text-neutral mb-3">
-        Your recent answers
-      </div>
-      <ul className="space-y-3">
-        {presenterOnly.slice(-3).map((t) => (
-          <li key={t.id} className="text-[13px] text-bone-dim border-l-2 hairline-strong pl-4">
-            {t.text}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`mono text-[10px] tracking-[0.22em] uppercase px-3 py-2 -mb-px border-b-2 transition-colors ${
+        active
+          ? "text-bone border-bone"
+          : "text-neutral border-transparent hover:text-bone-dim"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

@@ -59,7 +59,15 @@ Return ONLY a single JSON object (no prose, no markdown fences) matching this sc
     { "company": string, "multiple": string, "note": string }
   ],
   "unitEconomics": string,            // 2-3 sentences — gross margin, CAC payback, NRR if disclosed; "unknown" with note if not
-  "keyQuestionsForIC": string[]       // 5-8 pointed questions an IC partner should ask the founder, ordered by importance
+  "keyQuestionsForIC": string[],      // 5-8 pointed questions an IC partner should ask the founder, ordered by importance
+
+  "enrichment": {                     // live web-search findings, structured — fill each field from your searches; write "unknown — needs primary research" only if no search surfaced it
+    "funding": string,                // 1-2 sentences — the company's and key competitors' most recent funding rounds: amounts, lead investors, dates
+    "competitorPricing": string,      // 1-2 sentences — current pricing of named competitors / incumbents
+    "regulatoryStatus": string,       // 1-2 sentences — the current, verified status of the specific regulation(s) the deal depends on
+    "incumbentRoadmap": string,       // 1-2 sentences — recent AI roadmap moves by incumbents that threaten this deal
+    "comparables": string             // 1-2 sentences — recent comparable raises/exits and valuation multiples in the sector
+  }
 }`;
 
 const NOTION_MAPPING_INSTRUCTIONS = `Here is the raw Notion Dealflow record. Map its fields into the brief schema and then use web_search to enrich every section with current external data. Use "Kill Criteria" text to inform topRisks; use "Why Interesting" + "Thesis" + "Sector" to write thesisFit; use "Key Customers"/"Key Investors"/"Last Raise" for traction; use "Competitors" as a starting point but verify and expand via web search; use "Founding Team" for team but search for the founders to add depth; use "Key Signal 30d" for recentSignal.`;
@@ -186,6 +194,12 @@ async function generateBrief(body: { notionId?: string; rawText?: string }): Pro
   const harvested = collectSources(res.content as unknown[]);
   if (harvested.length) {
     brief.sources = [...(brief.sources ?? []), ...harvested].slice(0, 12);
+  }
+
+  // Stamp the enrichment block with a real server-side timestamp. The model
+  // fills the five text fields; the freshness marker must not be hallucinated.
+  if (brief.enrichment) {
+    brief.enrichment.sourcedAt = new Date().toISOString();
   }
 
   return brief;

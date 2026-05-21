@@ -28,16 +28,18 @@ The web app has cleared most of the PRD's Phase 1 surface plus several Phase 2 i
 | 5-dimension rubric + judge | ✅ | `/api/score`, `ScoreReport`, `ReportPDF` |
 | PDF export | ✅ | `@react-pdf/renderer`, now incl. a Sources page |
 | Sentiment dashboard | ✅ | per-member dot + post-room trajectory |
-| Brief executive card + drawer | ✅ | `DealBrief.tsx` |
+| Brief strip + full-memo drawer | ✅ | `DealBrief.tsx` (one-line strip in-room) |
 | Input lookup helper | ✅ | `/api/lookup`, `LookupPanel.tsx` |
 | **Evasion classifier + re-ask** | ✅ | `/api/evasion` (Haiku 4.5), PRD §12.2 |
 | **Session caps + 16-min warning** | ✅ | `lib/session-end.ts`, PRD §12.6 |
 | **Public share `/r/[token]`** | ✅ | stateless base64url, PRD §16.3 |
 | **Sample-deal mode** | ✅ | `lib/sample-deal.ts` (TORTUS AI), one-click entry on `/` |
+| **Card ↔ transcript toggle** | ✅ | `CommitteeLive` + `TranscriptView`, design-doc §10 |
+| **Structured 5-query enrichment** | ✅ | `Brief.enrichment` block, PRD §9.3 |
 
 Not yet built (PRD calls for these): Vercel KV caching, Notion OAuth per user,
-structured 5-query enrichment, sector-aware persona libraries, voice input, session
-history, card↔transcript view toggle, fund-specific IC styles, mid-turn fact-check.
+sector-aware persona libraries, voice input, session history, fund-specific IC
+styles, mid-turn fact-check.
 
 ---
 
@@ -119,18 +121,21 @@ replacement, ~1-click provision).
 - **Effort:** ~3–4 h. **Risk:** low. **Do before any further prompt-engineering work.**
 
 ### T3.2 · Structured 5-query enrichment
-- **Why:** PRD §10 — five *named* parallel searches (funding, competitor pricing,
-  regulatory status, incumbent roadmap, comparables) rendered as a discrete enrichment
-  block the agents cite explicitly. Today `/api/brief` is one tool-using prompt; the
-  search results blur into prose.
-- **Effort:** ~3 h. **Risk:** medium — `/api/brief` refactor. Possibly overkill vs. the
-  current single-prompt approach; measure with T3.1 evals before committing.
+- **Status:** ✅ Shipped — `Brief.enrichment` (`Enrichment` in `lib/types.ts`): the five
+  named fields are emitted by `BRIEF_SYSTEM`, stamped server-side with `sourcedAt`, fed
+  to the committee via `briefContext()`, and rendered in the memo drawer + PDF. Kept the
+  single tool-using `/api/brief` call rather than a separate `/api/enrich` route — the
+  one-call architecture is more efficient; only the output is now structured.
+- **Why:** PRD §10 — five *named* findings (funding, competitor pricing, regulatory
+  status, incumbent roadmap, comparables) the agents can cite explicitly.
 
 ### T3.3 · Card ↔ transcript view toggle
-- **Why:** PRD §11.3 / design-doc §10 — both display modes render from the same turn
-  array. Today the room has the card view + a 3-line "recent answers" strip; the full
-  chronological transcript view is missing in-room (it only exists post-room).
-- **Effort:** ~2 h. **Risk:** low.
+- **Status:** ✅ Shipped — the room is a single column with a `Live | Transcript` tab
+  toggle. `CommitteeLive` renders the active question large above the input;
+  `TranscriptView` is the full chronological log. Both render from the `turns` array.
+  This also fixed two reported bugs: the active question was buried in a cramped right
+  rail, and the deal memo crowded the top of the room.
+- **Why:** PRD §11.3 / design-doc §10 — both display modes from the same turn array.
 
 ### T3.4 · Voice input (push-to-talk)
 - **Why:** PRD §11 Phase 2 — Whisper STT, agent responses stay text. Genuinely faster
@@ -154,12 +159,12 @@ replacement, ~1-click provision).
 
 | # | Item | Severity | Fix |
 |---|------|----------|-----|
-| B-1 | Brief schema duplicated in 3 places (`lib/types.ts`, `BRIEF_SYSTEM` in `/api/brief`, `.claude/skills/ic-brief/SKILL.md`) — silent drift risk | Med | Add a sync-check (a test that asserts the three field lists agree), or generate the prose schema from the TS type. |
+| B-1 | Brief schema duplicated across `lib/types.ts` and `BRIEF_SYSTEM` in `/api/brief` — silent drift risk | Med | Add a sync-check (a test asserting the field lists agree), or generate the prompt schema from the TS type. The skill (`.claude/skills/ic-sim/SKILL.md`) emits a prose brief, so it is not part of the JSON-schema contract. |
 | B-2 | `as unknown as never` casts on the `web_search` tool — brittle, hides SDK type errors | Med | Resolved by T1.1 (SDK bump — newer `Tool` union lists the server-tool versions). |
 | B-3 | `/api/turn` web_search uncapped at scale | — | ✅ Fixed — `max_uses` dropped 3→1; each search added 5-10s of pre-stream latency, so a turn could stall 15-30s on an empty card. 12 turns × 1 = 12 searches/room. |
 | B-4 | Soft-end badge can lag one turn — `softEndAvailable` useMemo recomputes on `memberTurns` change, not on a time tick | Low | Drive it off the existing 1s interval, or accept the lag (it's cosmetic). |
 | B-5 | `/api/score` deterministic-failure loop — the retry button re-sends the identical prompt; a reproducible malformed-JSON failure loops | Low | Partly mitigated (max_tokens 1400→1800 this iteration). Consider a one-shot "repair" pass that re-prompts with the broken output. |
-| B-6 | Mobile layout not audited against PRD §14 — room uses `lg:` breakpoints; PRD wants a 375px-first vertical committee stack with the active member pinned | Med | Audit `CommitteeRoom` / `MemberCard` at 375px; implement the drawer-from-top brief + sticky bottom input. |
+| B-6 | Mobile layout not yet QA'd at 375px | Low | Largely resolved — the room is now single-column (`CommitteeRoom` + `CommitteeLive` + `TranscriptView`), so it adapts to narrow viewports by default. A dedicated 375px QA pass is still worthwhile. |
 | B-7 | No persistence beyond `sessionStorage` — closing the tab loses the session | Low | Resolved by T2.3 (KV session history). PRD §13.4 accepts this for MVP. |
 | B-8 | `.claude/worktrees/` build artifacts were polluting lint (~500 errors) | — | ✅ Fixed — `eslint.config.mjs` now ignores `**/.next/**` + `.claude/worktrees/**`. |
 
@@ -173,5 +178,4 @@ replacement, ~1-click provision).
 3. **T1.3** (sector personas) — a big realism lift. (T1.2 sample mode has shipped.)
 4. **T2.1** (Upstash Redis) — unlocks the whole Tier 2 line.
 5. **T2.2** (Notion OAuth) — the gate for a real public launch.
-6. Tier 3 depth features as bandwidth allows; **T3.2** only if T3.1 evals show the
-   current brief quality is the bottleneck.
+6. Remaining Tier 3 depth features as bandwidth allows (T3.2 and T3.3 have shipped).

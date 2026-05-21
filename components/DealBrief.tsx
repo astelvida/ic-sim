@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Brief } from "@/lib/types";
 
+// The deal brief in the room: a compact one-line strip (the old full-width
+// memo card sat too prominently above the conversation), with the full
+// memo behind a right-anchored drawer.
 export function DealBrief({ brief }: { brief: Brief }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -27,77 +30,45 @@ export function DealBrief({ brief }: { brief: Brief }) {
     };
   }, [drawerOpen]);
 
-  const thesisLead = brief.thesisFit
-    ? brief.thesisFit.split(/\s+/).slice(0, 14).join(" ") +
-      (brief.thesisFit.split(/\s+/).length > 14 ? "…" : "")
-    : null;
-
   return (
     <>
-      <section className="border-b hairline pb-5 mb-5">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-start">
-          {/* LEFT: identity */}
-          <div className="min-w-0">
-            <div className="mono text-[10px] tracking-[0.26em] uppercase text-neutral mb-1.5">
-              Deal Brief · {brief.sector || "—"} · {brief.stage || "—"}
-            </div>
-            <h2 className="display text-[32px] leading-[1.05] tracking-tight">
-              {brief.company}
-            </h2>
-            {brief.oneLiner && (
-              <p className="mt-1.5 text-[13.5px] text-bone-dim italic max-w-2xl">
-                {brief.oneLiner}
-              </p>
-            )}
-
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {brief.chips?.slice(0, 4).map((c) => (
-                <span key={c} className="chip">
-                  {c}
-                </span>
-              ))}
-            </div>
-
-            {thesisLead && (
-              <p className="mt-3 text-[12.5px] text-bone-dim">
-                <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral mr-2">
-                  Thesis
-                </span>
-                <span className="italic">{thesisLead}</span>
-              </p>
-            )}
-          </div>
-
-          {/* RIGHT: metrics + action */}
-          <div className="flex flex-col items-end gap-3 shrink-0">
-            <div className="flex items-baseline gap-5">
-              <InlineMetric label="SSI" value={brief.ssiScore} max={100} accent="amber" />
-              <InlineMetric label="Reg" value={brief.regEmbeddedness} max={20} accent="olive" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="btn-ghost hover:text-amber"
-            >
-              Full memo →
-            </button>
-          </div>
-        </div>
-
-        {/* Top risks — collapsed to 3 lines */}
-        {brief.topRisks && brief.topRisks.length > 0 && (
-          <div className="mt-4 pt-4 border-t hairline grid grid-cols-1 md:grid-cols-3 gap-3">
-            {brief.topRisks.slice(0, 3).map((r, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="mono text-[10px] tracking-[0.18em] uppercase text-oxblood mt-0.5 shrink-0">
-                  R{i + 1}
-                </span>
-                <p className="text-[12.5px] text-bone-dim leading-snug line-clamp-2">{r}</p>
-              </div>
-            ))}
-          </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-3.5 mb-5 border-b hairline">
+        <span className="mono text-[9px] tracking-[0.24em] uppercase text-neutral">
+          Deal
+        </span>
+        <span className="display text-[18px] leading-none">{brief.company}</span>
+        {brief.ssiScore !== null && (
+          <>
+            <Sep />
+            <StripStat label="SSI" value={`${brief.ssiScore}/100`} />
+          </>
         )}
-      </section>
+        {brief.regEmbeddedness !== null && (
+          <>
+            <Sep />
+            <StripStat label="Reg" value={`${brief.regEmbeddedness}/20`} />
+          </>
+        )}
+        {brief.stage && (
+          <>
+            <Sep />
+            <StripTag>{brief.stage}</StripTag>
+          </>
+        )}
+        {brief.sector && (
+          <>
+            <Sep />
+            <StripTag>{brief.sector}</StripTag>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          className="btn-ghost ml-auto hover:text-amber"
+        >
+          Full memo →
+        </button>
+      </div>
 
       {/* Side drawer: the full memo */}
       <AnimatePresence>
@@ -132,42 +103,28 @@ export function DealBrief({ brief }: { brief: Brief }) {
   );
 }
 
-function InlineMetric({
-  label,
-  value,
-  max,
-  accent,
-}: {
-  label: string;
-  value: number | null;
-  max: number;
-  accent: "amber" | "olive";
-}) {
-  const pct = value !== null ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
-  const color = accent === "amber" ? "var(--amber)" : "var(--olive)";
+function Sep() {
+  return <span className="text-neutral text-[11px] select-none">·</span>;
+}
+
+function StripStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col items-end">
-      <div className="flex items-baseline gap-1.5">
-        <span className="mono text-[9px] tracking-[0.24em] uppercase text-neutral">{label}</span>
-        <span className="mono text-[20px] text-bone leading-none">
-          {value !== null ? value : "—"}
-        </span>
-        <span className="mono text-[10px] text-neutral leading-none">/{max}</span>
-      </div>
-      <div className="h-[2px] w-20 mt-1.5 bg-[var(--rule)]">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.9, ease: [0.2, 0, 0, 1] }}
-          className="h-full"
-          style={{ background: color }}
-        />
-      </div>
-    </div>
+    <span className="mono text-[10px] tracking-[0.16em] uppercase text-neutral">
+      {label} <span className="text-bone">{value}</span>
+    </span>
+  );
+}
+
+function StripTag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mono text-[10px] tracking-[0.16em] uppercase text-bone-dim">
+      {children}
+    </span>
   );
 }
 
 function FullMemo({ brief, onClose }: { brief: Brief; onClose: () => void }) {
+  const e = brief.enrichment;
   return (
     <div className="p-7">
       <div className="flex items-start justify-between gap-4 mb-5">
@@ -249,6 +206,29 @@ function FullMemo({ brief, onClose }: { brief: Brief; onClose: () => void }) {
         <Field label="Cap Table" body={brief.capTable} />
         <Field label="Recent Signal" body={brief.recentSignal} />
 
+        {e &&
+          (e.funding ||
+            e.competitorPricing ||
+            e.regulatoryStatus ||
+            e.incumbentRoadmap ||
+            e.comparables) && (
+            <div className="pt-1">
+              <Label>
+                Live Web Enrichment
+                {e.sourcedAt
+                  ? ` · sourced ${new Date(e.sourcedAt).toLocaleDateString()}`
+                  : ""}
+              </Label>
+              <dl className="mt-1.5 space-y-2.5">
+                <EnrichRow label="Funding" value={e.funding} />
+                <EnrichRow label="Competitor Pricing" value={e.competitorPricing} />
+                <EnrichRow label="Regulatory Status" value={e.regulatoryStatus} />
+                <EnrichRow label="Incumbent Roadmap" value={e.incumbentRoadmap} />
+                <EnrichRow label="Comparables" value={e.comparables} />
+              </dl>
+            </div>
+          )}
+
         {brief.comparables && brief.comparables.length > 0 && (
           <div>
             <Label>Comparables</Label>
@@ -324,6 +304,18 @@ function Field({ label, body }: { label: string; body?: string }) {
     <div>
       <Label>{label}</Label>
       <p className="text-bone">{body}</p>
+    </div>
+  );
+}
+
+function EnrichRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div>
+      <dt className="mono text-[9px] tracking-[0.2em] uppercase text-neutral mb-0.5">
+        {label}
+      </dt>
+      <dd className="text-bone text-[12.5px] leading-relaxed">{value}</dd>
     </div>
   );
 }

@@ -98,22 +98,54 @@ function Report({ brief, rubric, turns }: { brief: Brief; rubric: Rubric; turns:
         </View>
       </Page>
 
-      {brief.sources && brief.sources.length > 0 && (
+      {(brief.enrichment || (brief.sources && brief.sources.length > 0)) && (
         <Page size="A4" style={styles.page}>
-          <Text style={styles.sub}>IC · SIM — Sources & Citations</Text>
-          <Text style={styles.label}>
-            Web-search citations gathered during brief generation
-          </Text>
-          <View style={{ marginTop: 12 }}>
-            {brief.sources.map((s, i) => (
-              <View key={i} style={styles.sourceRow}>
-                <Text style={styles.sourceTitle}>
-                  {i + 1}. {s.title}
-                </Text>
-                <Text style={styles.sourceUrl}>{s.url}</Text>
+          <Text style={styles.sub}>IC · SIM — Brief Enrichment &amp; Sources</Text>
+
+          {brief.enrichment && (
+            <View style={styles.section}>
+              <Text style={styles.label}>
+                Live web enrichment
+                {brief.enrichment.sourcedAt
+                  ? ` · sourced ${brief.enrichment.sourcedAt.slice(0, 10)}`
+                  : ""}
+              </Text>
+              {(
+                [
+                  ["Funding", brief.enrichment.funding],
+                  ["Competitor pricing", brief.enrichment.competitorPricing],
+                  ["Regulatory status", brief.enrichment.regulatoryStatus],
+                  ["Incumbent roadmap", brief.enrichment.incumbentRoadmap],
+                  ["Comparables", brief.enrichment.comparables],
+                ] as Array<[string, string | undefined]>
+              )
+                .filter(([, v]) => !!v)
+                .map(([k, v]) => (
+                  <View key={k} style={styles.trajRow}>
+                    <Text style={styles.trajLabel}>{k}</Text>
+                    <Text style={styles.trajValue}>{v}</Text>
+                  </View>
+                ))}
+            </View>
+          )}
+
+          {brief.sources && brief.sources.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.label}>
+                Web-search citations gathered during brief generation
+              </Text>
+              <View style={{ marginTop: 12 }}>
+                {brief.sources.map((s, i) => (
+                  <View key={i} style={styles.sourceRow}>
+                    <Text style={styles.sourceTitle}>
+                      {i + 1}. {s.title}
+                    </Text>
+                    <Text style={styles.sourceUrl}>{s.url}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </View>
+          )}
         </Page>
       )}
 

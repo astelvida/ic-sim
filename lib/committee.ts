@@ -60,6 +60,24 @@ function briefContext(brief: Brief): string {
     for (const q of brief.keyQuestionsForIC) lines.push(`  - ${q}`);
   }
 
+  if (brief.enrichment) {
+    const e = brief.enrichment;
+    const parts = [
+      e.funding && `Funding: ${e.funding}`,
+      e.competitorPricing && `Competitor pricing: ${e.competitorPricing}`,
+      e.regulatoryStatus && `Regulatory status: ${e.regulatoryStatus}`,
+      e.incumbentRoadmap && `Incumbent roadmap: ${e.incumbentRoadmap}`,
+      e.comparables && `Comparable raises: ${e.comparables}`,
+    ].filter(Boolean);
+    if (parts.length) {
+      lines.push("");
+      lines.push(
+        `LIVE WEB ENRICHMENT${e.sourcedAt ? ` (sourced ${e.sourcedAt})` : ""} — current external data, cite it directly:`,
+      );
+      for (const p of parts) lines.push(`  - ${p}`);
+    }
+  }
+
   lines.push("");
   return lines.join("\n");
 }
