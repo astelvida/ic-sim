@@ -33,11 +33,11 @@ The web app has cleared most of the PRD's Phase 1 surface plus several Phase 2 i
 | **Evasion classifier + re-ask** | ✅ | `/api/evasion` (Haiku 4.5), PRD §12.2 |
 | **Session caps + 16-min warning** | ✅ | `lib/session-end.ts`, PRD §12.6 |
 | **Public share `/r/[token]`** | ✅ | stateless base64url, PRD §16.3 |
+| **Sample-deal mode** | ✅ | `lib/sample-deal.ts` (TORTUS AI), one-click entry on `/` |
 
 Not yet built (PRD calls for these): Vercel KV caching, Notion OAuth per user,
 structured 5-query enrichment, sector-aware persona libraries, voice input, session
-history, sample-deal mode, card↔transcript view toggle, fund-specific IC styles,
-mid-turn fact-check.
+history, card↔transcript view toggle, fund-specific IC styles, mid-turn fact-check.
 
 ---
 
@@ -56,6 +56,7 @@ Small, low-risk, high-leverage. Each is a single focused session.
 - **Ref:** PRD §10; web research notes in the session log.
 
 ### T1.2 · Sample-deal mode (TORTUS AI hardcoded)
+- **Status:** ✅ Shipped — `lib/sample-deal.ts` (the TORTUS `Brief`) + `components/SampleDeal.tsx`, surfaced as the first entry point on `/`.
 - **Why:** PRD §6.1 lists three input modes — paste, **sample**, Notion. Sample is the
   zero-friction path for first-time visitors and demos; today the only entry is a live
   Notion fetch (60–120s) which is a brutal first impression.
@@ -155,7 +156,7 @@ replacement, ~1-click provision).
 |---|------|----------|-----|
 | B-1 | Brief schema duplicated in 3 places (`lib/types.ts`, `BRIEF_SYSTEM` in `/api/brief`, `.claude/skills/ic-brief/SKILL.md`) — silent drift risk | Med | Add a sync-check (a test that asserts the three field lists agree), or generate the prose schema from the TS type. |
 | B-2 | `as unknown as never` casts on the `web_search` tool — brittle, hides SDK type errors | Med | Resolved by T1.1 (SDK bump — newer `Tool` union lists the server-tool versions). |
-| B-3 | `/api/turn` web_search uncapped at scale — up to 36 searches per 12-turn room | Med | Gate per-session, or drop `max_uses` to 2, or only enable web_search on turns whose keyword routing suggests a factual claim. |
+| B-3 | `/api/turn` web_search uncapped at scale | — | ✅ Fixed — `max_uses` dropped 3→1; each search added 5-10s of pre-stream latency, so a turn could stall 15-30s on an empty card. 12 turns × 1 = 12 searches/room. |
 | B-4 | Soft-end badge can lag one turn — `softEndAvailable` useMemo recomputes on `memberTurns` change, not on a time tick | Low | Drive it off the existing 1s interval, or accept the lag (it's cosmetic). |
 | B-5 | `/api/score` deterministic-failure loop — the retry button re-sends the identical prompt; a reproducible malformed-JSON failure loops | Low | Partly mitigated (max_tokens 1400→1800 this iteration). Consider a one-shot "repair" pass that re-prompts with the broken output. |
 | B-6 | Mobile layout not audited against PRD §14 — room uses `lg:` breakpoints; PRD wants a 375px-first vertical committee stack with the active member pinned | Med | Audit `CommitteeRoom` / `MemberCard` at 375px; implement the drawer-from-top brief + sticky bottom input. |
@@ -169,8 +170,7 @@ replacement, ~1-click provision).
 1. **T1.1** (web_search upgrade) — 30 min, free accuracy + cost win, clears B-2.
 2. **T3.1** (eval harness) — *before* any further prompt work, so every change after
    has a regression number.
-3. **T1.2 + T1.3** (sample mode + sector personas) — a weekend afternoon; big UX +
-   realism lift.
+3. **T1.3** (sector personas) — a big realism lift. (T1.2 sample mode has shipped.)
 4. **T2.1** (Upstash Redis) — unlocks the whole Tier 2 line.
 5. **T2.2** (Notion OAuth) — the gate for a real public launch.
 6. Tier 3 depth features as bandwidth allows; **T3.2** only if T3.1 evals show the

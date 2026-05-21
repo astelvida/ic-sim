@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session-context";
 import type { Brief, DealListItem } from "@/lib/types";
 
 // Rotating progress hints shown next to "drafting brief…". The /api/brief route
-// runs web_search up to 6x server-side — user-visible wait is 20-40s. These hints
+// runs web_search up to 4x server-side — user-visible wait is 20-40s. These hints
 // give the user a sense of forward motion without lying about real progress.
 const BRIEF_HINTS = [
   "drafting brief…",
@@ -23,10 +23,10 @@ export function DealsList() {
   const router = useRouter();
   const { setBrief } = useSession();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [deals, setDeals] = useState<DealListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [simCopiedId, setSimCopiedId] = useState<string | null>(null);
   const [enteringId, setEnteringId] = useState<string | null>(null);
   const [enterError, setEnterError] = useState<string | null>(null);
@@ -43,22 +43,34 @@ export function DealsList() {
     return () => clearInterval(id);
   }, [enteringId]);
 
+  // Fetch the pipeline once on mount. The panel is open by default so the table
+  // is the prominent landing entry rather than a hidden accordion. Every state
+  // update happens inside an async callback (never synchronously in the effect
+  // body), so React 19's set-state-in-effect rule stays satisfied.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/deals")
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+        return j.deals as DealListItem[];
+      })
+      .then((d) => {
+        if (!cancelled) setDeals(d);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "fetch failed");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function togglePanel() {
-    const next = !open;
-    setOpen(next);
-    if (next && deals === null && !loading) {
-      setLoading(true);
-      setError(null);
-      fetch("/api/deals")
-        .then(async (r) => {
-          const j = await r.json();
-          if (!r.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
-          return j.deals as DealListItem[];
-        })
-        .then((d) => setDeals(d))
-        .catch((e) => setError(e instanceof Error ? e.message : "fetch failed"))
-        .finally(() => setLoading(false));
-    }
+    setOpen((o) => !o);
   }
 
   const allStages = useMemo(() => unique(deals?.map((d) => d.stage) ?? []), [deals]);
@@ -132,7 +144,7 @@ export function DealsList() {
         </div>
         <div className="flex items-center gap-4">
           <span className="mono text-[10px] tracking-[0.22em] uppercase text-neutral">
-            01 — Pick a deal
+            Live · from Notion
           </span>
           <span className="mono text-[12px] text-bone-dim group-hover:text-bone transition-colors">
             {open ? "− collapse" : "+ expand"}

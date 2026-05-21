@@ -15,7 +15,7 @@ IC-Sim is a rehearsal tool for VC analysts and principals to practice defending 
 
 It ships as **two parallel surfaces** that share the same four committee personas: a Next.js web app (the deployable browser product) and five Claude Code skills under `.claude/skills/` (terminal-native, runs inside a Claude Code session with no Anthropic API key on the user's machine).
 
-The user journey on the web side: (1) **pick** a deal from the Notion-backed pipeline panel on `/`, (2) the app calls `/api/brief` which uses Anthropic's `web_search_20250305` server tool to enrich the Notion data into a memo-depth brief, (3) **defend** in the room — committee picks the next member adaptively (Haiku-classified evasion → re-ask; otherwise keyword + novelty + random), capped at 12 turns or 18 minutes with a 16-minute warning, (4) **score** with a 5-dimension rubric + PDF export, optionally generate a stateless `/r/[token]` share link.
+The user journey on the web side: (1) **pick** a deal — the one-click TORTUS AI sample, or a live deal from the Notion-backed pipeline panel on `/`, (2) the app calls `/api/brief` which uses Anthropic's `web_search_20250305` server tool to enrich the Notion data into a memo-depth brief, (3) **defend** in the room — committee picks the next member adaptively (Haiku-classified evasion → re-ask; otherwise keyword + novelty + random), capped at 12 turns or 18 minutes with a 16-minute warning, (4) **score** with a 5-dimension rubric + PDF export, optionally generate a stateless `/r/[token]` share link.
 
 The user journey on the skill side: (1) `/ic-deals` to browse the pipeline, (2) `/ic-brief` to draft the brief, (3) `/ic-sim` to run the full simulation (or `/ic-turn` to rehearse a single question), (4) `/ic-score` for the post-room rubric.
 
@@ -68,7 +68,7 @@ Persona changes must be made in **both places** or the surfaces drift. The web p
 
 ### Web-app session flow
 
-`app/page.tsx` renders three sections: the hero/header, the "How it works" explainer, and a collapsible `<DealsList />` panel (lazy-fetches `/api/deals` on expand). The "enter the room →" button on each row calls `POST /api/brief {notionId}` → the Anthropic SDK with `web_search_20250305` enriches the Notion data into a memo-depth `Brief` (~20-40s) → `setBrief` in `SessionProvider` → router pushes to `/room` (`CommitteeRoom`) → streaming `/api/turn` per committee turn → `/api/score` → `/report` (`ScoreReport`, with `@react-pdf/renderer` export and a "Share result" button that hits `/api/share`).
+`app/page.tsx` renders the hero/header, the "How it works" explainer, and a "Start" section with two entry points: `<SampleDeal />` (a one-click hard-coded TORTUS AI brief from `lib/sample-deal.ts` — `setBrief()` then straight to `/room`, no API call and no wait) and `<DealsList />` (the Notion pipeline panel, now open by default and fetching `/api/deals` once on mount). The "enter the room →" button on each `DealsList` row calls `POST /api/brief {notionId}` → the Anthropic SDK with `web_search_20250305` enriches the Notion data into a memo-depth `Brief` (~20-40s) → `setBrief` in `SessionProvider` → router pushes to `/room` (`CommitteeRoom`) → streaming `/api/turn` per committee turn → `/api/score` → `/report` (`ScoreReport`, with `@react-pdf/renderer` export and a "Share result" button that hits `/api/share`).
 
 `DealBrief` in `/room` renders a ~270px **executive card** by default — company, one-liner, chips, inline SSI / Reg metrics, top 3 risks — and opens the full 16-section memo in a right-anchored **drawer** (backdrop dimmer, Esc closes, body scroll lock) on click. The drawer is also where `brief.sources` web-search citations render as clickable links. The committee LLM still sees the full memo via `briefContext()` in `lib/committee.ts`; the drawer is purely a presentational compression.
 
@@ -135,7 +135,7 @@ Five places hold a JSON-emitting system prompt: `app/api/brief/route.ts` (the `B
 
 Both `/api/brief` and `/api/score` wrap `JSON.parse(extractJson(text))` in a `try/catch` that logs `text.length`, `stop_reason`, and the trailing 200 chars on failure. When the model truncates (the most common failure mode), the error message includes `stop_reason=max_tokens` so the cause is obvious from the client error alone — no need to dig server logs.
 
-The single source of truth for the `Brief` shape is `lib/types.ts`. The web app no longer has a paste-JSON entry point, so there is no runtime schema validator — the only way to populate a `Brief` is through `/api/brief` (server-controlled) or `setBrief()` on the session context (currently only called from `DealsList`). If you add a new entry point that accepts an externally-supplied `Brief`, validate against `lib/types.ts` at the boundary.
+The single source of truth for the `Brief` shape is `lib/types.ts`. The web app no longer has a paste-JSON entry point, so there is no runtime schema validator — a `Brief` is populated either through `/api/brief` (server-controlled) or via `setBrief()` on the session context (called from `DealsList` with a server-fetched brief, and from `SampleDeal` with the static, compile-time-checked `SAMPLE_BRIEF` in `lib/sample-deal.ts`). If you add a new entry point that accepts an externally-supplied `Brief`, validate against `lib/types.ts` at the boundary.
 
 ### `/api/brief` in-flight dedupe
 
@@ -158,13 +158,13 @@ Anthropic's `web_search` server tool charges per search. Per-route caps:
 | Route          | Model      | `max_uses` | Notes                                                              |
 |----------------|------------|-----------:|---------------------------------------------------------------------|
 | `/api/brief`   | Sonnet 4.6 | 4          | Was 6 — trimmed since each search adds 5-10s and bloats the loop. |
-| `/api/turn`    | Sonnet 4.6 | 3          | Per committee turn. Up to 12 turns × 3 = 36 searches per room.    |
+| `/api/turn`    | Sonnet 4.6 | 1          | Per committee turn. Trimmed from 3 — each search added 5-10s before any text streamed. Up to 12 turns × 1 = 12 searches per room. |
 | `/api/lookup`  | Sonnet 4.6 | 2          | Narrower than a brief; the founder is composing inline.            |
 | `/api/evasion` | Haiku 4.5  | —          | No web_search. Pure classification.                                |
 | `/api/score`   | Sonnet 4.6 | —          | No tools; rubric only.                                             |
 | `/api/share`   | —          | —          | No LLM. Pure transformation.                                       |
 
-A pessimistic 12-turn IC session can therefore trigger up to 4 (brief) + 36 (room) + 24 (lookup, if used every turn) = **~64 web searches** plus 12 Haiku classifier calls. At scale, gate or cap. The Haiku calls are negligible (~$0.0003 each); the Sonnet `web_search` calls are the real cost.
+A pessimistic 12-turn IC session can therefore trigger up to 4 (brief) + 12 (room) + 24 (lookup, if used every turn) = **~40 web searches** plus 12 Haiku classifier calls. At scale, gate or cap. The Haiku calls are negligible (~$0.0003 each); the Sonnet `web_search` calls are the real cost.
 
 ### Why raw SDK, not the Vercel AI Gateway
 
