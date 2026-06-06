@@ -18,3 +18,16 @@ export function getAnthropic(): Anthropic {
   }
   return client;
 }
+
+// If `error` looks like an Anthropic auth failure (missing or invalid key —
+// "ANTHROPIC_API_KEY is not set" from getAnthropic above, or a 401 from the
+// API itself with `authentication_error` / `x-api-key` in the body), return a
+// friendly diagnostic the routes can surface verbatim. Otherwise null.
+export function friendlyAnthropicAuthMessage(error: unknown): string | null {
+  const raw = error instanceof Error ? error.message : "";
+  if (!raw) return null;
+  const isAuth = /authentication_error|x-api-key|ANTHROPIC_API_KEY|\b401\b/.test(raw);
+  return isAuth
+    ? "Anthropic API authentication failed (HTTP 401). The ANTHROPIC_API_KEY on this deployment is missing or invalid — set a valid key in the Vercel project settings and redeploy."
+    : null;
+}

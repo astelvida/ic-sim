@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
+import { friendlyAnthropicAuthMessage, getAnthropic, MODEL_ID } from "@/lib/anthropic";
 import { fetchDeal } from "@/lib/notion";
 import { extractJson } from "@/lib/json-extract";
 import { withRetry } from "@/lib/retry";
@@ -135,13 +135,13 @@ async function generateBrief(body: { notionId?: string; rawText?: string }): Pro
     throw new Error("provide notionId or rawText");
   }
 
-  const client = getAnthropic();
   // BRIEF_SYSTEM is ~1,500 tokens — well above Sonnet 4.6's 1,024-token cache floor.
   // When the user generates briefs for multiple deals in a session, subsequent calls
   // read the system prompt at 0.1x base input cost. Cache breakpoint also on the tools
   // array so the web_search tool definition cost is amortized.
-  const res = await withRetry(() =>
-    client.messages.create({
+  const createBrief = () => {
+    const client = getAnthropic();
+    return client.messages.create({
       model: MODEL_ID,
       // 8192 gives clean headroom for the memo-depth JSON. The model previously
       // truncated mid-JSON at ~position 13k with max_tokens=4096 on rich deals.
@@ -166,8 +166,21 @@ async function generateBrief(body: { notionId?: string; rawText?: string }): Pro
         } as unknown as never,
       ],
       messages: [{ role: "user", content: userMessage }],
-    }),
-  );
+    });
+  };
+
+  // Translate Anthropic auth failures into a clear user-facing diagnostic
+  // before the outer POST catch JSON-ifies them — otherwise the UI shows
+  // "401 {\"type\":\"error\",...}" which is unhelpful. Notion-side failures
+  // (fetchDeal above) keep their original messages.
+  let res: Awaited<ReturnType<typeof createBrief>>;
+  try {
+    res = await withRetry(createBrief);
+  } catch (e) {
+    const friendly = friendlyAnthropicAuthMessage(e);
+    if (friendly) throw new Error(friendly);
+    throw e;
+  }
 
   const text = res.content
     .filter((b) => b.type === "text")

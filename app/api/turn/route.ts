@@ -1,4 +1,4 @@
-import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
+import { friendlyAnthropicAuthMessage, getAnthropic, MODEL_ID } from "@/lib/anthropic";
 import { COMMITTEE_BY_ID } from "@/lib/committee";
 import { withRetry } from "@/lib/retry";
 import type { Brief, MemberId, Turn } from "@/lib/types";
@@ -122,12 +122,10 @@ export async function POST(req: Request) {
     stream = await withRetry(createStream);
   } catch (e) {
     const raw = e instanceof Error ? e.message : "unknown error";
-    const isAuth = /\b401\b|authentication|x-api-key|api[_-]?key/i.test(raw);
+    const auth = friendlyAnthropicAuthMessage(e);
     return new Response(
       JSON.stringify({
-        error: isAuth
-          ? "Anthropic API authentication failed (HTTP 401). The ANTHROPIC_API_KEY on this deployment is missing or invalid — set a valid key in the Vercel project settings and redeploy."
-          : `The committee turn failed upstream: ${raw}`,
+        error: auth ?? `The committee turn failed upstream: ${raw}`,
       }),
       { status: 502, headers: { "Content-Type": "application/json" } },
     );
