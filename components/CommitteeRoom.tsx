@@ -192,6 +192,16 @@ export function CommitteeRoom() {
     start();
     const firstId = pickNextMemberSync([]);
     runMember(firstId, []);
+    // React StrictMode in dev mounts → cleans up → remounts. The unmount-time
+    // cleanup elsewhere calls turnAbort.abort(), which aborts the first
+    // kickoff's in-flight fetch (silent AbortError). Without this reset, the
+    // remount's effect would see kickoff.current === true and skip — the room
+    // would sit on "reviewing the brief…" forever. Re-clearing the flag lets
+    // the remount re-fire cleanly. In prod (no StrictMode double-mount) the
+    // cleanup only runs on real unmount, where it's harmless.
+    return () => {
+      kickoff.current = false;
+    };
   }, [brief, turns.length, start, runMember]);
 
   const handlePresenterSubmit = useCallback(
